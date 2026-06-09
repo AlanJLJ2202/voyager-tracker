@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Solar System · Voyager Tracker</title>
+<style>
+  /* ============================================================
+     ESTILOS — tema espacial oscuro, paneles "vidrio"
+     ============================================================ */
+  :root {
+    --bg: #04060d;
+    --panel-bg: rgba(10, 15, 28, 0.82);
+    --panel-border: rgba(130, 160, 255, 0.16);
+    --text: #dde4f5;
+    --text-dim: #8b96b8;
+    --accent: #6ea8ff;
+    --v1: #ffc864;
+    --v2: #64d2ff;
+    --helio: #9d7bff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    color: var(--text);
+    font-size: 14px;
+  }
+  canvas { display: block; }
+  #scene-container { position: fixed; inset: 0; }
+
+  .panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  }
+
+  /* ---- Encabezado y control de tiempo (arriba-izquierda) ---- */
+  #hud {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    padding: 14px 18px; width: 318px; max-width: calc(100vw - 32px);
+  }
+  #hud h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.4px; padding-right: 66px; }
+  #sel-idioma { position: absolute; top: 12px; right: 14px; display: flex; gap: 4px; }
+  #sel-idioma button { padding: 3px 8px; font-size: 11px; }
+  #hud h1 .sub { display: block; font-size: 11px; font-weight: 400; color: var(--text-dim); margin-top: 2px; }
+  #fecha {
+    font-size: 19px; font-weight: 600; color: var(--accent);
+    margin: 10px 0 6px; font-variant-numeric: tabular-nums;
+  }
+  #slider-tiempo { width: 100%; accent-color: var(--accent); cursor: pointer; }
+  #controles-tiempo { display: flex; gap: 6px; margin-top: 8px; align-items: center; }
+  button, select {
+    font-family: inherit; font-size: 12.5px; color: var(--text);
+    background: rgba(110, 140, 230, 0.14);
+    border: 1px solid rgba(130, 160, 255, 0.22);
+    border-radius: 8px; padding: 5px 10px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  button:hover, select:hover { background: rgba(110, 140, 230, 0.30); }
+  button.activo { background: rgba(110, 160, 255, 0.45); border-color: var(--accent); }
+  select { appearance: none; }
+  #btn-play { width: 36px; }
+
+  /* ---- Barra de vistas / escala (abajo-centro) ---- */
+  #barra-vistas {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    z-index: 10; display: flex; gap: 14px; align-items: center;
+    padding: 9px 14px; flex-wrap: wrap; justify-content: center;
+    max-width: calc(100vw - 24px);
+  }
+  .grupo { display: flex; gap: 5px; align-items: center; }
+  .grupo .etq { font-size: 10.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; margin-right: 2px; }
+  .sep { width: 1px; height: 22px; background: var(--panel-border); }
+
+  /* ---- Identidad: redes + firma (arriba-derecha, flotando sobre el espacio) ---- */
+  #identidad {
+    position: fixed; top: 20px; right: 20px; z-index: 40;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+  }
+  #redes { display: flex; gap: 12px; }
+  #redes a {
+    display: block; width: 28px; height: 28px; color: #fff; opacity: 0.7;
+    transition: opacity 0.2s, filter 0.2s;
+  }
+  #redes a svg { width: 100%; height: 100%; fill: currentColor; display: block; }
+  #redes a:hover {
+    opacity: 1;
+    filter: drop-shadow(0 0 6px rgba(160, 195, 255, 0.95)) drop-shadow(0 0 16px rgba(110, 168, 255, 0.55));
+  }
+  #firma {
+    font-family: Consolas, "SF Mono", "Courier New", monospace;
+    font-size: 9px; color: #fff; opacity: 0.4; letter-spacing: 0.5px; user-select: none;
+  }
+
+  /* ---- Panel de información (derecha, debajo de la identidad) ---- */
+  #info {
+    position: fixed; top: 70px; right: 16px; z-index: 11;
+    width: 320px; max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 165px); overflow-y: auto;
+    padding: 18px 20px;
+    transform: translateX(360px); opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+  #info.visible { transform: translateX(0); opacity: 1; }
+  #info-cerrar {
+    position: absolute; top: 10px; right: 10px;
+    width: 26px; height: 26px; padding: 0; border-radius: 50%;
+    font-size: 13px; line-height: 1;
+  }
+  #info-tipo {
+    display: inline-block; font-size: 10px; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--accent);
+    border: 1px solid rgba(110, 168, 255, 0.4); border-radius: 20px;
+    padding: 2px 9px; margin-bottom: 6px;
+  }
+  #info h2 { font-size: 22px; font-weight: 600; margin-bottom: 12px; }
+  .stat { display: flex; justify-content: space-between; gap: 12px; padding: 5.5px 0; border-bottom: 1px solid rgba(130, 160, 255, 0.08); }
+  .stat-k { color: var(--text-dim); font-size: 12.5px; }
+  .stat-v { text-align: right; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  #info-dato { margin-top: 12px; font-size: 13px; line-height: 1.55; color: #c3cce4; }
+  #info-extra { margin-top: 14px; }
+  .btn-grande {
+    width: 100%; padding: 9px; font-size: 13px; font-weight: 600;
+    background: rgba(255, 200, 100, 0.16); border-color: rgba(255, 200, 100, 0.45);
+  }
+  .btn-grande:hover { background: rgba(255, 200, 100, 0.32); }
+  .btn-centrar { width: 100%; padding: 7px; margin-top: 8px; }
+
+  /* ---- Tarjeta de escala "balón de fútbol" (abajo-izquierda) ---- */
+  #tarjeta-escala {
+    position: fixed; bottom: 16px; left: 16px; z-index: 10;
+    width: 300px; max-width: calc(100vw - 32px); padding: 13px 16px;
+    font-size: 12.5px; line-height: 1.5;
+  }
+  #tarjeta-escala h3 { font-size: 12.5px; margin-bottom: 6px; cursor: pointer; user-select: none; }
+  #tarjeta-escala h3 .flecha { float: right; color: var(--text-dim); transition: transform 0.2s; }
+  #tarjeta-escala.cerrada .flecha { transform: rotate(-90deg); }
+  #tarjeta-escala.cerrada #escala-cuerpo { display: none; }
+  #escala-cuerpo ul { list-style: none; margin-top: 4px; }
+  #escala-cuerpo li { padding: 2px 0; color: #c3cce4; }
+  #escala-cuerpo li b { color: var(--text); }
+  #escala-cuerpo .v1c { color: var(--v1); }
+  #escala-cuerpo .luz { margin-top: 6px; color: var(--text-dim); font-style: italic; }
+
+  /* ---- Leyenda (derecha-abajo) ---- */
+  #leyenda {
+    position: fixed; bottom: 16px; right: 16px; z-index: 9;
+    padding: 10px 14px; font-size: 11.5px;
+  }
+  #leyenda div { display: flex; align-items: center; gap: 7px; padding: 2px 0; cursor: pointer; color: var(--text-dim); }
+  #leyenda div:hover { color: var(--text); }
+  .muestra { width: 14px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+  #nota-escala { margin-top: 6px; font-size: 10px; color: #5d6886; font-style: italic; max-width: 190px; }
+
+  /* ---- Tooltip flotante ---- */
+  #tooltip {
+    position: fixed; z-index: 20; pointer-events: none; display: none;
+    padding: 8px 12px; font-size: 12px; line-height: 1.5; max-width: 250px;
+    font-variant-numeric: tabular-nums;
+  }
+  #tooltip b { color: var(--accent); font-size: 13px; }
+
+  /* ---- Etiquetas 3D (CSS2D) ---- */
+  .lbl {
+    font-size: 11.5px; color: #ccd5ee; cursor: pointer; user-select: none;
+    text-shadow: 0 0 5px #000, 0 0 10px #000; white-space: nowrap;
+    transform: translateY(-4px); pointer-events: auto;
+  }
+  .lbl:hover { color: #fff; }
+  .lbl .sub { display: block; font-size: 10px; color: var(--text-dim); text-align: center; }
+  .lbl.voy1 { color: var(--v1); font-weight: 600; }
+  .lbl.voy2 { color: var(--v2); font-weight: 600; }
+  .lbl.anillo { font-size: 10px; color: #56618a; cursor: default; pointer-events: none; }
+  .lbl.constel { font-size: 10.5px; color: #7d88ad; font-style: italic; cursor: default; pointer-events: none; }
+  .lbl.helio { color: var(--helio); font-size: 10.5px; }
+
+  /* ---- Vista desde el Voyager ---- */
+  #vista-voyager {
+    position: fixed; inset: 0; z-index: 30; display: none;
+    pointer-events: none;
+  }
+  #vista-voyager.visible { display: block; }
+  #vv-panel {
+    position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+    width: 520px; max-width: calc(100vw - 30px); padding: 18px 24px;
+    pointer-events: auto; text-align: center;
+  }
+  #vv-panel h2 { font-size: 17px; margin-bottom: 8px; }
+  #vv-panel p { font-size: 13px; line-height: 1.6; color: #c3cce4; margin-bottom: 6px; }
+  #vv-panel .dato-luz { color: var(--v1); font-weight: 600; }
+  #vv-volver { margin-top: 10px; padding: 8px 22px; font-size: 13px; }
+  #vv-mira {
+    position: absolute; top: 46.5%; left: 50%; transform: translate(-50%, -100%);
+    color: rgba(255,255,255,0.25); font-size: 11px; text-align: center; letter-spacing: 1px;
+  }
+  /* En perspectiva Voyager se oculta el resto de la interfaz para inmersión total */
+  body.modo-voyager #hud, body.modo-voyager #barra-vistas,
+  body.modo-voyager #leyenda, body.modo-voyager #tarjeta-escala,
+  body.modo-voyager #pista { display: none; }
+
+  /* ---- Pista inicial ---- */
+  #pista {
+    position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%);
+    z-index: 8; padding: 9px 18px; font-size: 12.5px; color: var(--text-dim);
+    transition: opacity 1.2s; white-space: nowrap;
+  }
+
+  /* ---- Error de carga ---- */
+  #load-error {
+    position: fixed; inset: 0; z-index: 100; display: none;
+    align-items: center; justify-content: center; text-align: center;
+    background: var(--bg); color: var(--text-dim); padding: 30px; line-height: 1.7;
+  }
+
+  /* ---- Responsivo ---- */
+  @media (max-width: 720px) {
+    #hud { width: 250px; padding: 10px 14px; }
+    #tarjeta-escala { display: none; }
+    #leyenda { display: none; }
+    #info { width: 280px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="scene-container"></div>
+
+<!-- Identidad del autor: flota directamente sobre el espacio, sin fondo -->
+<div id="identidad">
+  <div id="redes">
+    <a href="https://github.com/alanjlj2202" target="_blank" rel="noopener" aria-label="GitHub" title="GitHub">
+      <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+    <a href="https://www.linkedin.com/in/alanjlj" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z"/></svg>
+    </a>
+  </div>
+  <div id="firma">Alan JLJ · Fable 5</div>
+</div>
+
+<!-- Encabezado + tiempo -->
+<header id="hud" class="panel">
+  <div id="sel-idioma">
+    <button id="btn-en" class="activo" title="English">EN</button>
+    <button id="btn-es" title="Español">ES</button>
+  </div>
+  <h1>Solar System · Voyager Tracker
+    <span class="sub">Orbits derived from Kepler’s laws · real spacecraft data</span>
+  </h1>
+  <div id="fecha">—</div>
+  <input type="range" id="slider-tiempo" min="1977" max="2076" step="0.01" value="2026">
+  <div id="controles-tiempo">
+    <button id="btn-play">▶</button>
+    <select id="sel-velocidad">
+      <option value="1">1 day/s</option>
+      <option value="7">1 week/s</option>
+      <option value="30" selected>1 month/s</option>
+      <option value="365">1 year/s</option>
+      <option value="1825">5 years/s</option>
+    </select>
+    <button id="btn-hoy">Today</button>
+  </div>
+</header>
+
+<!-- Vistas y escala -->
+<nav id="barra-vistas" class="panel">
+  <div class="grupo">
+    <span class="etq" id="etq-vista">View</span>
+    <button data-vista="interior">☀️ Inner</button>
+    <button data-vista="planetas">🪐 Planets</button>
+    <button data-vista="voyagers" class="activo">🚀 Voyagers</button>
+  </div>
+  <div class="sep"></div>
+  <div class="grupo">
+    <span class="etq" id="etq-escala">Scale</span>
+    <button id="btn-log" class="activo">Logarithmic</button>
+    <button id="btn-lineal">Real</button>
+  </div>
+  <div class="sep"></div>
+  <div class="grupo">
+    <span class="etq" id="etq-persp">Perspective</span>
+    <button id="btn-pv1" style="color: var(--v1)">📡 From V1</button>
+    <button id="btn-pv2" style="color: var(--v2)">📡 From V2</button>
+  </div>
+</nav>
+
+<!-- Panel de información -->
+<aside id="info" class="panel">
+  <button id="info-cerrar">✕</button>
+  <div id="info-tipo"></div>
+  <h2 id="info-nombre"></h2>
+  <div id="info-stats"></div>
+  <p id="info-dato"></p>
+  <div id="info-extra"></div>
+</aside>
+
+<!-- Tarjeta de escala tangible -->
+<div id="tarjeta-escala" class="panel">
+  <h3 id="escala-titulo"><span id="escala-titulo-txt">⚽ If the Sun were a soccer ball…</span> <span class="flecha">▾</span></h3>
+  <div id="escala-cuerpo">
+    <ul>
+      <li>🌍 Earth: a <b>grain of sand (2 mm)</b> at <b>24 m</b></li>
+      <li>🔵 Neptune: a <b>marble</b> at <b>710 m</b></li>
+      <li>💠 Heliopause: at <b>2.8 km</b></li>
+      <li class="v1c">📡 Voyager 1 today: at <b id="escala-v1">4.0 km</b> — across town</li>
+      <li class="v1c" style="color: var(--v2)">📡 Voyager 2 today: at <b id="escala-v2">3.3 km</b></li>
+      <li>✨ The nearest star: at <b>6,300 km</b> — across an ocean</li>
+    </ul>
+    <div class="luz">…and light, at this scale, would crawl along at 4.7 cm/s: slower than a tortoise.</div>
+  </div>
+</div>
+
+<!-- Leyenda -->
+<div id="leyenda" class="panel">
+  <div data-cuerpo="heliopausa"><span class="muestra" style="background: var(--helio)"></span> <span class="ley-txt">Heliopause (~120 AU)</span></div>
+  <div data-cuerpo="oort"><span class="muestra" style="background: #6b7699"></span> <span class="ley-txt">Oort Cloud (2,000–100,000 AU)</span></div>
+  <div data-cuerpo="voyager1"><span class="muestra" style="background: var(--v1)"></span> <span class="ley-txt">Voyager 1 trajectory</span></div>
+  <div data-cuerpo="voyager2"><span class="muestra" style="background: var(--v2)"></span> <span class="ley-txt">Voyager 2 trajectory</span></div>
+  <div id="nota-escala">Body sizes not to scale. Distances follow the selected scale mode.</div>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip" class="panel"></div>
+
+<!-- Vista desde el Voyager -->
+<div id="vista-voyager">
+  <div id="vv-mira">· the Sun ·<br>↓</div>
+  <div id="vv-panel" class="panel">
+    <h2 id="vv-titulo">You are aboard Voyager 1</h2>
+    <p id="vv-texto"></p>
+    <p id="vv-luz" class="dato-luz"></p>
+    <button id="vv-volver">← Back to the solar system</button>
+  </div>
+</div>
+
+<!-- Pista inicial -->
+<div id="pista" class="panel">🖱️ Drag to rotate · scroll to zoom · click any body to learn about it</div>
+
+<!-- Error de carga -->
+<div id="load-error">
+  <div>
+    <h2 id="err-titulo">Could not load the 3D library</h2>
+    <p id="err-texto">This app needs an internet connection to download Three.js from the CDN.<br>
+    Check your connection and reload the page.</p>
+  </div>
+</div>
+
+<script>
+  // Si el módulo no arranca en 8 s (sin internet → falla el import del CDN), mostrar aviso.
+  setTimeout(function () {
+    if (!window.__app) document.getElementById('load-error').style.display = 'flex';
+  }, 8000);
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+/* ============================================================
+   1. CONSTANTES FÍSICAS Y UTILIDADES
+   ============================================================ */
+const AU_KM   = 149597870.7;     // 1 AU en km
+const C_AU_S  = 499.004784;      // segundos-luz por AU
+const J2000   = 2451545.0;       // día juliano de la época J2000.0
+const DEG     = Math.PI / 180;
+const GM_VEL  = 29.7847;         // km/s: velocidad orbital de un cuerpo a 1 AU circular (√(GM☉/AU))
+
+// Escala de escena: en lineal, 10 unidades = 1 AU.
+// En logarítmica, r' = K·ln(1 + r/R0) comprime el espacio para ver
+// planetas interiores y Voyagers en la misma vista.
+const LIN_UNIT = 10;
+const LOG_K    = 12;
+const LOG_R0   = 0.30;
+
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+
+/* ============================================================
+   1b. INTERNACIONALIZACIÓN (en / es)
+   `t(clave)` devuelve el texto de interfaz en el idioma activo;
+   `tx(campo)` resuelve un campo bilingüe {en, es} de los datos.
+   ============================================================ */
+let idioma = 'en';
+const LOCALES = { en: 'en-US', es: 'es-MX' };
+const fmt = (n, d = 0) => n.toLocaleString(LOCALES[idioma], { maximumFractionDigits: d, minimumFractionDigits: d });
+const t = (clave) => TXT[idioma][clave];
+const tx = (campo) => campo[idioma];
+
+const TXT = {
+  en: {
+    docTitle: '3D Solar System · Voyager Tracker',
+    titulo: 'Solar System · Voyager Tracker',
+    sub: 'Orbits derived from Kepler’s laws · real spacecraft data',
+    hoy: 'Today',
+    velocidades: ['1 day/s', '1 week/s', '1 month/s', '1 year/s', '5 years/s'],
+    etqVista: 'View', etqEscala: 'Scale', etqPersp: 'Perspective',
+    vInterior: '☀️ Inner', vPlanetas: '🪐 Planets', vVoyagers: '🚀 Voyagers',
+    log: 'Logarithmic', real: 'Real',
+    desdeV1: '📡 From V1', desdeV2: '📡 From V2',
+    escalaTitulo: '⚽ If the Sun were a soccer ball…',
+    escalaCuerpoHTML: `<ul>
+      <li>🌍 Earth: a <b>grain of sand (2 mm)</b> at <b>24 m</b></li>
+      <li>🔵 Neptune: a <b>marble</b> at <b>710 m</b></li>
+      <li>💠 Heliopause: at <b>2.8 km</b></li>
+      <li class="v1c">📡 Voyager 1 today: at <b id="escala-v1">…</b> — across town</li>
+      <li class="v1c" style="color: var(--v2)">📡 Voyager 2 today: at <b id="escala-v2">…</b></li>
+      <li>✨ The nearest star: at <b>6,300 km</b> — across an ocean</li>
+    </ul>
+    <div class="luz">…and light, at this scale, would crawl along at 4.7 cm/s: slower than a tortoise.</div>`,
+    leyenda: ['Heliopause (~120 AU)', 'Oort Cloud (2,000–100,000 AU)', 'Voyager 1 trajectory', 'Voyager 2 trajectory'],
+    notaEscala: 'Body sizes not to scale. Distances follow the selected scale mode.',
+    pista: '🖱️ Drag to rotate · scroll to zoom · click any body to learn about it',
+    vvMira: '· the Sun ·', vvVolver: '← Back to the solar system',
+    errTitulo: 'Could not load the 3D library',
+    errTexto: 'This app needs an internet connection to download Three.js from the CDN.<br>Check your connection and reload the page.',
+    etqHelio: 'Heliopause · 120 AU', etqOort: 'Oort Cloud',
+    constelacion: (v) => `✦ Toward ${v.id === 'voyager1' ? 'Ophiuchus' : 'Pavo'} — ${v.nombre}’s course`,
+    tipoEstrella: 'Star · type G2V', tipoPlaneta: 'Planet', tipoSonda: 'Interstellar probe · NASA',
+    kRadio: 'Radius', tierras109: '(109 Earths)', kMasaSS: 'Share of solar-system mass',
+    kLuzTierra: 'Light travel time to Earth', kLuzV1: 'Light travel time to Voyager 1',
+    kDistAhora: 'Distance to Sun now', kTiempoLuz: 'Light-time from the Sun',
+    kPeriodo: 'Orbital period (Kepler)', kVelAhora: 'Orbital speed now',
+    kDist: 'Distance to Sun', kVel: 'Speed', kLanz: 'Launch', kAniosViaje: 'Time traveling',
+    kRumbo: 'Heading', kCruce: 'Heliopause crossing',
+    uDias: 'days', uAnios: 'years',
+    btnVerSol: '👁 See the Sun from here', btnCentrar: '🎯 Center camera here',
+    ttSol: 'Center of the system · 99.86% of all its mass',
+    ttDist: 'Distance to Sun', ttLuz: 'Light-time', ttVelOrb: 'Orbital speed', ttVel: 'Speed',
+    vvTitulo: (nombre) => `You are aboard ${nombre}`,
+    vvTexto: (dAU, mkm, veces, frac) => `At <b>${dAU} AU</b> from the Sun — ${mkm} million km away. That star at the center <b>is the Sun</b>: still ~${veces} times brighter than the full Moon, yet ${frac} times dimmer than daylight on Earth. It no longer warms anything: out here it is −270 °C. Everything you know — continents, oceans, all of humanity — fits in a single pixel next to that light.`,
+    vvLuz: (tiempo) => `The light you are seeing left the Sun ${tiempo} ago. Every radio signal from the probe takes just as long to reach NASA.`,
+  },
+  es: {
+    docTitle: 'Sistema Solar 3D · Rastreador Voyager',
+    titulo: 'Sistema Solar · Rastreador Voyager',
+    sub: 'Órbitas derivadas de las leyes de Kepler · datos reales de las sondas',
+    hoy: 'Hoy',
+    velocidades: ['1 día/s', '1 semana/s', '1 mes/s', '1 año/s', '5 años/s'],
+    etqVista: 'Vista', etqEscala: 'Escala', etqPersp: 'Perspectiva',
+    vInterior: '☀️ Interior', vPlanetas: '🪐 Planetas', vVoyagers: '🚀 Voyagers',
+    log: 'Logarítmica', real: 'Real',
+    desdeV1: '📡 Desde V1', desdeV2: '📡 Desde V2',
+    escalaTitulo: '⚽ Si el Sol fuera un balón de fútbol…',
+    escalaCuerpoHTML: `<ul>
+      <li>🌍 La Tierra: un <b>grano de arena (2 mm)</b> a <b>24 m</b></li>
+      <li>🔵 Neptuno: una <b>canica</b> a <b>710 m</b></li>
+      <li>💠 Heliopausa: a <b>2.8 km</b></li>
+      <li class="v1c">📡 Voyager 1 hoy: a <b id="escala-v1">…</b> — al otro lado de tu ciudad</li>
+      <li class="v1c" style="color: var(--v2)">📡 Voyager 2 hoy: a <b id="escala-v2">…</b></li>
+      <li>✨ La estrella más cercana: a <b>6,300 km</b> — cruzando un océano</li>
+    </ul>
+    <div class="luz">…y la luz, a esta escala, avanzaría a 4.7 cm/s: más lenta que una tortuga.</div>`,
+    leyenda: ['Heliopausa (~120 AU)', 'Nube de Oort (2,000–100,000 AU)', 'Trayectoria Voyager 1', 'Trayectoria Voyager 2'],
+    notaEscala: 'Tamaños de los cuerpos no a escala. Distancias según el modo de escala elegido.',
+    pista: '🖱️ Arrastra para girar · rueda para acercar · haz clic en cualquier cuerpo',
+    vvMira: '· el Sol ·', vvVolver: '← Volver al sistema solar',
+    errTitulo: 'No se pudo cargar la librería 3D',
+    errTexto: 'Esta aplicación necesita conexión a internet para descargar Three.js desde el CDN.<br>Verifica tu conexión y recarga la página.',
+    etqHelio: 'Heliopausa · 120 AU', etqOort: 'Nube de Oort',
+    constelacion: (v) => `✦ Hacia ${v.id === 'voyager1' ? 'Ofiuco' : 'Pavo'} — rumbo de ${v.nombre}`,
+    tipoEstrella: 'Estrella · tipo G2V', tipoPlaneta: 'Planeta', tipoSonda: 'Sonda interestelar · NASA',
+    kRadio: 'Radio', tierras109: '(109 Tierras)', kMasaSS: 'Masa del sistema solar',
+    kLuzTierra: 'Luz hasta la Tierra', kLuzV1: 'Luz hasta Voyager 1',
+    kDistAhora: 'Distancia al Sol ahora', kTiempoLuz: 'Tiempo-luz desde el Sol',
+    kPeriodo: 'Período orbital (Kepler)', kVelAhora: 'Velocidad orbital ahora',
+    kDist: 'Distancia al Sol', kVel: 'Velocidad', kLanz: 'Lanzamiento', kAniosViaje: 'Años de viaje',
+    kRumbo: 'Rumbo', kCruce: 'Cruce de la heliopausa',
+    uDias: 'días', uAnios: 'años',
+    btnVerSol: '👁 Ver el Sol desde aquí', btnCentrar: '🎯 Centrar cámara aquí',
+    ttSol: 'Centro del sistema · 99.86 % de la masa',
+    ttDist: 'Distancia al Sol', ttLuz: 'Tiempo-luz', ttVelOrb: 'Velocidad orbital', ttVel: 'Velocidad',
+    vvTitulo: (nombre) => `Estás a bordo del ${nombre}`,
+    vvTexto: (dAU, mkm, veces, frac) => `A <b>${dAU} AU</b> del Sol — ${mkm} millones de km. Esa estrella al centro <b>es el Sol</b>: todavía ~${veces} veces más brillante que la Luna llena, pero ${frac} veces más tenue que el día en la Tierra. Ya no calienta: aquí afuera hace −270 °C. Todo lo que conoces — continentes, océanos, la humanidad entera — cabe en un píxel junto a esa luz.`,
+    vvLuz: (tiempo) => `La luz que ves salió del Sol hace ${tiempo}. Cada señal de radio de la sonda tarda lo mismo en llegar a la NASA.`,
+  },
+};
+
+function jdDesdeFecha(y, m, d) { return Date.UTC(y, m - 1, d) / 86400000 + 2440587.5; }
+function jdDesdeAnio(anio) { return jdDesdeFecha(1977, 1, 1) + (anio - 1977) * 365.25; }
+function anioDesdeJd(jd) { return 1977 + (jd - jdDesdeFecha(1977, 1, 1)) / 365.25; }
+function fechaDesdeJd(jd) { return new Date((jd - 2440587.5) * 86400000); }
+
+// Tiempo-luz legible: "8 min 19 s" o "22 h 54 min"
+function fmtTiempoLuz(au) {
+  const s = au * C_AU_S;
+  if (s < 90) return `${Math.round(s)} s`;
+  if (s < 5400) return `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`;
+  return `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min`;
+}
+
+/* ============================================================
+   2. DATOS ASTRONÓMICOS
+   Elementos orbitales J2000 (JPL, elementos keplerianos aproximados).
+   El período NO está tabulado: se deriva de la 3ª ley de Kepler (T² ∝ a³).
+   ============================================================ */
+const PLANETAS = [
+  { id: 'mercurio', nombre: { en: 'Mercury', es: 'Mercurio' }, color: 0xb8a89a, radioKm: 2440, tam: 0.50,
+    a: 0.38709927, e: 0.20563593, i: 7.00497902, L0: 252.25032350, varpi: 77.45779628, Omega: 48.33076593,
+    dato: { en: 'The smallest and fastest planet: it completes one trip around the Sun every 88 days, moving at nearly 48 km/s.',
+            es: 'El planeta más pequeño y veloz: completa una vuelta al Sol cada 88 días moviéndose a casi 48 km/s.' } },
+  { id: 'venus', nombre: { en: 'Venus', es: 'Venus' }, color: 0xe6c87a, radioKm: 6052, tam: 0.74,
+    a: 0.72333566, e: 0.00677672, i: 3.39467605, L0: 181.97909950, varpi: 131.60246718, Omega: 76.67984255,
+    dato: { en: 'The hottest planet in the solar system (464 °C) thanks to the greenhouse effect of its CO₂ atmosphere. It shines so brightly it can be seen in daylight.',
+            es: 'El más caliente del sistema solar (464 °C) por el efecto invernadero de su atmósfera de CO₂. Su brillo es tal que puede verse de día.' } },
+  { id: 'tierra', nombre: { en: 'Earth', es: 'Tierra' }, color: 0x4f87d4, radioKm: 6371, tam: 0.78,
+    a: 1.00000261, e: 0.01671123, i: 0.0, L0: 100.46457166, varpi: 102.93768193, Omega: 0.0,
+    dato: { en: 'Our home: all of humanity, past and present, has lived on this 12,742-km sphere. The Voyagers departed from here in 1977.',
+            es: 'Nuestro hogar: toda la humanidad, pasada y presente, ha vivido en esta esfera de 12,742 km. Desde aquí partieron los Voyager en 1977.' } },
+  { id: 'marte', nombre: { en: 'Mars', es: 'Marte' }, color: 0xd1693f, radioKm: 3390, tam: 0.60,
+    a: 1.52371034, e: 0.09339410, i: 1.84969142, L0: -4.55343205, varpi: -23.94362959, Omega: 49.55953891,
+    dato: { en: 'The next human destination. A spacecraft journey takes about 7 months; a radio message, between 3 and 22 minutes depending on where both planets are.',
+            es: 'El próximo destino humano. Un viaje en nave toma unos 7 meses; un mensaje de radio, entre 3 y 22 minutos según la posición de ambos planetas.' } },
+  { id: 'jupiter', nombre: { en: 'Jupiter', es: 'Júpiter' }, color: 0xd8b48a, radioKm: 69911, tam: 1.45,
+    a: 5.20288700, e: 0.04838624, i: 1.30439695, L0: 34.39644051, varpi: 14.72847983, Omega: 100.47390909,
+    dato: { en: 'As massive as 318 Earths. Its gravity worked as a slingshot that hurled both Voyagers toward deep space (gravity assist, 1979).',
+            es: 'Tan masivo como 318 Tierras. Su gravedad funcionó como "honda" para lanzar a los dos Voyager hacia el espacio profundo (asistencia gravitatoria, 1979).' } },
+  { id: 'saturno', nombre: { en: 'Saturn', es: 'Saturno' }, color: 0xe0cf9f, radioKm: 58232, tam: 1.28,
+    a: 9.53667594, e: 0.05386179, i: 2.48599187, L0: 49.95424423, varpi: 92.59887831, Omega: 113.66242448,
+    dato: { en: 'Its rings span 280,000 km yet are only about 10 m thick. It was Voyager 1’s last stop (1980) before being flung out of the plane of the planets.',
+            es: 'Sus anillos miden 280,000 km de ancho pero solo unos 10 m de grosor. Fue la última parada del Voyager 1 (1980) antes de salir disparado fuera del plano de los planetas.' } },
+  { id: 'urano', nombre: { en: 'Uranus', es: 'Urano' }, color: 0x9ad8d8, radioKm: 25362, tam: 1.00,
+    a: 19.18916464, e: 0.04725744, i: 0.77263783, L0: 313.23810451, varpi: 170.95427630, Omega: 74.01692503,
+    dato: { en: 'It spins "on its side", with its axis tilted 98°. Only one spacecraft has ever visited it: Voyager 2, in January 1986.',
+            es: 'Gira "acostado", con su eje inclinado 98°. Solo una nave lo ha visitado en toda la historia: el Voyager 2, en enero de 1986.' } },
+  { id: 'neptuno', nombre: { en: 'Neptune', es: 'Neptuno' }, color: 0x5a7bd8, radioKm: 24622, tam: 1.00,
+    a: 30.06992276, e: 0.00859048, i: 1.77004347, L0: -55.12002969, varpi: 44.96476227, Omega: 131.78422574,
+    dato: { en: 'The most distant planet: 30 AU out, where the Sun shines 900 times dimmer than on Earth. Voyager 2 flew by in 1989 and nothing has visited it since.',
+            es: 'El planeta más lejano: 30 AU, donde el Sol brilla 900 veces menos que en la Tierra. Voyager 2 lo sobrevoló en 1989 y nada ha vuelto a visitarlo.' } },
+];
+
+// Sondas Voyager: dirección asintótica real (coordenadas eclípticas) y
+// distancia que crece linealmente con su velocidad heliocéntrica actual.
+const VOYAGERS = [
+  { id: 'voyager1', nombre: 'Voyager 1', color: 0xffc864, css: 'voy1',
+    dist2026: 166.0,            // AU el 1-ene-2026
+    velKms: 17.0,               // km/s heliocéntrica
+    lonEcl: 255, latEcl: 35,    // rumbo: constelación de Ofiuco, ~35° sobre la eclíptica
+    rumbo: { en: 'constellation Ophiuchus (35° above the ecliptic)', es: 'constelación de Ofiuco (35° sobre la eclíptica)' },
+    lanzamiento: { en: 'September 5, 1977', es: '5 de septiembre de 1977' }, jdLanzamiento: jdDesdeFecha(1977, 9, 5),
+    cruceHeliopausa: { en: 'August 25, 2012', es: '25 de agosto de 2012' },
+    dato: { en: 'The most distant human-made object in history. It carries a Golden Record with music, sounds and greetings from Earth in 55 languages. On August 25, 2012 it became the first spacecraft to cross into interstellar space.',
+            es: 'El objeto humano más lejano de la historia. Lleva un Disco de Oro con música, sonidos y saludos de la Tierra en 55 idiomas. El 25 de agosto de 2012 se convirtió en la primera nave en cruzar al espacio interestelar.' } },
+  { id: 'voyager2', nombre: 'Voyager 2', color: 0x64d2ff, css: 'voy2',
+    dist2026: 138.0,
+    velKms: 15.4,
+    lonEcl: 290, latEcl: -48,   // rumbo: constelación de Pavo, ~48° bajo la eclíptica
+    rumbo: { en: 'constellation Pavo (48° below the ecliptic)', es: 'constelación de Pavo (48° bajo la eclíptica)' },
+    lanzamiento: { en: 'August 20, 1977', es: '20 de agosto de 1977' }, jdLanzamiento: jdDesdeFecha(1977, 8, 20),
+    cruceHeliopausa: { en: 'November 5, 2018', es: '5 de noviembre de 2018' },
+    dato: { en: 'Launched 16 days BEFORE Voyager 1, it is the only spacecraft to have visited all four outer planets: Jupiter, Saturn, Uranus and Neptune (the "Grand Tour"). It crossed the heliopause on November 5, 2018.',
+            es: 'Lanzada 16 días ANTES que Voyager 1, es la única nave que ha visitado los cuatro planetas exteriores: Júpiter, Saturno, Urano y Neptuno (el "Gran Tour"). Cruzó la heliopausa el 5 de noviembre de 2018.' } },
+];
+
+const SOL = {
+  id: 'sol', nombre: { en: 'Sun', es: 'Sol' }, radioKm: 696340,
+  dato: { en: 'It holds 99.86% of all the mass in the solar system. Its light takes 8 min 19 s to reach Earth… and nearly 23 hours to reach Voyager 1.',
+          es: 'Contiene el 99.86 % de toda la masa del sistema solar. Su luz tarda 8 min 19 s en llegar a la Tierra… y casi 23 horas en alcanzar al Voyager 1.' }
+};
+
+const CUERPOS_EXTRA = {
+  heliopausa: {
+    nombre: { en: 'Heliopause', es: 'Heliopausa' },
+    tipo: { en: 'Boundary of the solar wind', es: 'Frontera del viento solar' },
+    stats: {
+      en: [['Distance to the Sun', '~120 AU (18 billion km)'], ['Light-time from the Sun', fmtTiempoLuz(120)], ['Crossed by Voyager 1', 'August 25, 2012'], ['Crossed by Voyager 2', 'November 5, 2018']],
+      es: [['Distancia al Sol', '~120 AU (18,000 millones de km)'], ['Tiempo-luz desde el Sol', fmtTiempoLuz(120)], ['Cruzada por Voyager 1', '25 de agosto de 2012'], ['Cruzada por Voyager 2', '5 de noviembre de 2018']],
+    },
+    dato: { en: 'The Sun’s "bubble": this is where the solar wind slows to a halt against interstellar gas. Crossing it officially means leaving the Sun’s domain and entering the space between the stars. Both Voyagers are already outside — the only human-made objects ever to make it.',
+            es: 'La "burbuja" del Sol: hasta aquí llega el viento solar antes de frenarse contra el gas interestelar. Cruzarla es, oficialmente, salir del dominio del Sol y entrar al espacio entre las estrellas. Ambas Voyager ya están afuera — los únicos objetos humanos que lo han logrado.' } },
+  oort: {
+    nombre: { en: 'Oort Cloud', es: 'Nube de Oort' },
+    tipo: { en: 'Comet reservoir (hypothetical)', es: 'Reserva de cometas (hipotética)' },
+    stats: {
+      en: [['Inner edge', '~2,000 AU'], ['Outer edge', '~100,000 AU (1.6 light-years)'], ['Estimated contents', 'trillions of icy comet nuclei']],
+      es: [['Borde interno', '~2,000 AU'], ['Borde externo', '~100,000 AU (1.6 años-luz)'], ['Contenido estimado', 'billones de núcleos de cometas helados']],
+    },
+    dato: { en: 'An immense shell of comets wrapping the entire solar system. Even at ~17 km/s, the Voyagers will take about 300 years to reach its inner edge… and around 30,000 years to pass all the way through. Only shown in logarithmic scale.',
+            es: 'Un inmenso cascarón de cometas que envuelve todo el sistema solar. Aunque los Voyager viajan a ~17 km/s, tardarán unos 300 años en llegar a su borde interno… y alrededor de 30,000 años en atravesarla por completo. Solo se muestra en escala logarítmica.' } },
+};
+
+/* ============================================================
+   3. MECÁNICA KEPLERIANA (primeros principios)
+   Posición heliocéntrica de cada planeta resolviendo la ecuación
+   de Kepler M = E − e·sen E por Newton-Raphson, con el período
+   derivado de la 3ª ley: T[años] = a^(3/2).
+   ============================================================ */
+function resolverKepler(M, e) {
+  let E = M;
+  for (let k = 0; k < 12; k++) {
+    const dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    E -= dE;
+    if (Math.abs(dE) < 1e-9) break;
+  }
+  return E;
+}
+
+// Devuelve {x, y, z} eclíptico heliocéntrico en AU.
+function posicionPlaneta(p, jd) {
+  const dias = jd - J2000;
+  const periodoDias = Math.pow(p.a, 1.5) * 365.25;     // 3ª ley de Kepler
+  const n = 360 / periodoDias;                          // movimiento medio (°/día)
+  const M = ((p.L0 + n * dias - p.varpi) % 360) * DEG; // anomalía media
+  const E = resolverKepler(M, p.e);                     // anomalía excéntrica
+
+  // Posición en el plano orbital (foco en el Sol)
+  const xp = p.a * (Math.cos(E) - p.e);
+  const yp = p.a * Math.sqrt(1 - p.e * p.e) * Math.sin(E);
+
+  // Rotación: argumento del perihelio ω, inclinación i, nodo ascendente Ω
+  const w = (p.varpi - p.Omega) * DEG, O = p.Omega * DEG, inc = p.i * DEG;
+  const cw = Math.cos(w), sw = Math.sin(w);
+  const cO = Math.cos(O), sO = Math.sin(O);
+  const ci = Math.cos(inc), si = Math.sin(inc);
+  return {
+    x: (cw * cO - sw * sO * ci) * xp + (-sw * cO - cw * sO * ci) * yp,
+    y: (cw * sO + sw * cO * ci) * xp + (-sw * sO + cw * cO * ci) * yp,
+    z: (sw * si) * xp + (cw * si) * yp,
+  };
+}
+
+// Velocidad orbital instantánea por vis-viva: v = √(GM(2/r − 1/a))
+function velocidadOrbital(p, rAU) {
+  return GM_VEL * Math.sqrt(Math.max(0, 2 / rAU - 1 / p.a));
+}
+
+/* ============================================================
+   4. POSICIÓN DE LOS VOYAGER
+   Lejos del Sol viajan casi en línea recta: dirección asintótica
+   fija (lat/lon eclíptica) y distancia que crece ~linealmente.
+   Cerca del lanzamiento, la trayectoria pasa por las posiciones
+   REALES de los planetas en cada sobrevuelo, calculadas con el
+   mismo motor kepleriano.
+   ============================================================ */
+const JD_2026 = jdDesdeFecha(2026, 1, 1);
+
+function posLejanaVoyager(v, jd) {
+  const anios = (jd - JD_2026) / 365.25;
+  const rateAUanio = v.velKms * 31557600 / AU_KM;       // km/s → AU/año
+  const d = v.dist2026 + rateAUanio * anios;
+  const lat = v.latEcl * DEG, lon = v.lonEcl * DEG;
+  return { x: d * Math.cos(lat) * Math.cos(lon), y: d * Math.cos(lat) * Math.sin(lon), z: d * Math.sin(lat) };
+}
+
+// Puntos de control de cada trayectoria: lanzamiento desde la Tierra,
+// sobrevuelos planetarios reales y empalme con la asíntota interestelar.
+function construirPuntosControl() {
+  const T = Object.fromEntries(PLANETAS.map(p => [p.id, p]));
+  const wp = (jd, pos) => ({ jd, pos });
+
+  VOYAGERS[0].puntos = [
+    wp(jdDesdeFecha(1977, 9, 5),  posicionPlaneta(T.tierra,  jdDesdeFecha(1977, 9, 5))),
+    wp(jdDesdeFecha(1979, 3, 5),  posicionPlaneta(T.jupiter, jdDesdeFecha(1979, 3, 5))),   // sobrevuelo Júpiter
+    wp(jdDesdeFecha(1980, 11, 12), posicionPlaneta(T.saturno, jdDesdeFecha(1980, 11, 12))), // sobrevuelo Saturno
+    wp(jdDesdeFecha(1986, 1, 1),  posLejanaVoyager(VOYAGERS[0], jdDesdeFecha(1986, 1, 1))),
+    wp(jdDesdeFecha(1995, 1, 1),  posLejanaVoyager(VOYAGERS[0], jdDesdeFecha(1995, 1, 1))),
+  ];
+  VOYAGERS[1].puntos = [
+    wp(jdDesdeFecha(1977, 8, 20), posicionPlaneta(T.tierra,  jdDesdeFecha(1977, 8, 20))),
+    wp(jdDesdeFecha(1979, 7, 9),  posicionPlaneta(T.jupiter, jdDesdeFecha(1979, 7, 9))),
+    wp(jdDesdeFecha(1981, 8, 25), posicionPlaneta(T.saturno, jdDesdeFecha(1981, 8, 25))),
+    wp(jdDesdeFecha(1986, 1, 24), posicionPlaneta(T.urano,   jdDesdeFecha(1986, 1, 24))),  // sobrevuelo Urano
+    wp(jdDesdeFecha(1989, 8, 25), posicionPlaneta(T.neptuno, jdDesdeFecha(1989, 8, 25))),  // sobrevuelo Neptuno
+    wp(jdDesdeFecha(1996, 1, 1),  posLejanaVoyager(VOYAGERS[1], jdDesdeFecha(1996, 1, 1))),
+    wp(jdDesdeFecha(2006, 1, 1),  posLejanaVoyager(VOYAGERS[1], jdDesdeFecha(2006, 1, 1))),
+  ];
+}
+
+// Posición de la sonda en cualquier fecha (interpolación por tramos
+// entre puntos de control; después del último, fórmula asintótica).
+function posicionVoyager(v, jd) {
+  const pts = v.puntos;
+  if (jd <= pts[0].jd) return pts[0].pos;
+  if (jd >= pts[pts.length - 1].jd) return posLejanaVoyager(v, jd);
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (jd <= pts[i + 1].jd) {
+      const t = (jd - pts[i].jd) / (pts[i + 1].jd - pts[i].jd);
+      const a = pts[i].pos, b = pts[i + 1].pos;
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t };
+    }
+  }
+  return pts[pts.length - 1].pos;
+}
+
+function distanciaVoyagerAU(v, jd) {
+  const p = posicionVoyager(v, jd);
+  return Math.hypot(p.x, p.y, p.z);
+}
+
+/* ============================================================
+   5. ESCALA DE LA ESCENA (lineal ↔ logarítmica)
+   Toda la geometría se guarda en AU y se proyecta con mapR.
+   ============================================================ */
+let modoEscala = 'log';
+
+function mapR(rAU, modo = modoEscala) {
+  if (rAU <= 0) return 0;
+  return modo === 'lineal' ? rAU * LIN_UNIT : LOG_K * Math.log(1 + rAU / LOG_R0);
+}
+// AU eclíptico {x,y,z} → vector de escena (Y hacia arriba), preservando dirección.
+function aEscena(p, destino) {
+  const r = Math.hypot(p.x, p.y, p.z);
+  const v = destino || new THREE.Vector3();
+  if (r === 0) return v.set(0, 0, 0);
+  const s = mapR(r) / r;
+  return v.set(p.x * s, p.z * s, -p.y * s);
+}
+
+/* ============================================================
+   6. ESCENA THREE.JS
+   ============================================================ */
+const contenedor = $('scene-container');
+const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+contenedor.appendChild(renderer.domElement);
+
+const cssRenderer = new CSS2DRenderer();
+cssRenderer.setSize(window.innerWidth, window.innerHeight);
+cssRenderer.domElement.style.position = 'fixed';
+cssRenderer.domElement.style.top = '0';
+cssRenderer.domElement.style.pointerEvents = 'none';
+contenedor.appendChild(cssRenderer.domElement);
+
+const escena = new THREE.Scene();
+const camara = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.05, 300000);
+camara.position.set(60, 70, 130);
+
+const controles = new OrbitControls(camara, renderer.domElement);
+controles.enableDamping = true;
+controles.dampingFactor = 0.06;
+controles.minDistance = 2;
+controles.maxDistance = 90000;
+
+escena.add(new THREE.AmbientLight(0xffffff, 0.35));
+const luzSol = new THREE.PointLight(0xfff4e0, 2.4, 0, 0); // decay 0: ilumina a cualquier distancia de escena
+escena.add(luzSol);
+
+// ---- Texturas procedurales (sprites de brillo) ----
+function texturaBrillo(colorInterno = 'rgba(255,255,255,1)', colorMedio = 'rgba(255,220,160,0.35)') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, colorInterno);
+  g.addColorStop(0.25, colorMedio);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+
+// ---- Campo de estrellas ----
+function crearEstrellas() {
+  const N = 4500, R = 30000;
+  const pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    // Distribución uniforme sobre la esfera celeste
+    const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2;
+    const s = Math.sqrt(1 - u * u), r = R * (0.94 + Math.random() * 0.12);
+    pos[i * 3] = r * s * Math.cos(th); pos[i * 3 + 1] = r * u; pos[i * 3 + 2] = r * s * Math.sin(th);
+    const b = 0.35 + Math.random() * 0.65, tinte = Math.random();
+    col[i * 3] = b * (tinte > 0.7 ? 1 : 0.9); col[i * 3 + 1] = b * 0.92; col[i * 3 + 2] = b * (tinte < 0.3 ? 1 : 0.95);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const m = new THREE.PointsMaterial({ size: 55, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.9, depthWrite: false });
+  return new THREE.Points(g, m);
+}
+escena.add(crearEstrellas());
+
+// ---- Etiquetas CSS2D ----
+function crearEtiqueta(html, clase, alClicar) {
+  const div = document.createElement('div');
+  div.className = 'lbl' + (clase ? ' ' + clase : '');
+  div.innerHTML = html;
+  if (alClicar) div.addEventListener('click', (e) => { e.stopPropagation(); alClicar(); });
+  return new CSS2DObject(div);
+}
+
+/* ============================================================
+   7. CONSTRUCCIÓN DE CUERPOS
+   ============================================================ */
+const seleccionables = [];   // mallas para raycast
+const refrescables = [];     // funciones que se reconstruyen al cambiar de escala
+
+// --- Sol ---
+const RADIO_SOL = 1.6;
+const sol = new THREE.Mesh(
+  new THREE.SphereGeometry(RADIO_SOL, 48, 32),
+  new THREE.MeshBasicMaterial({ color: 0xfff0c0 })
+);
+sol.userData.cuerpo = 'sol';
+escena.add(sol);
+seleccionables.push(sol);
+
+const brilloSol = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: texturaBrillo(), color: 0xffe9b0, transparent: true, opacity: 0.85,
+  blending: THREE.AdditiveBlending, depthWrite: false,
+}));
+brilloSol.scale.setScalar(9);
+sol.add(brilloSol);
+const etqSol = crearEtiqueta(tx(SOL.nombre), '', () => seleccionarCuerpo('sol'));
+sol.add(etqSol);
+
+// Destello para la vista desde el Voyager (tamaño angular constante, solo visible en ese modo)
+const destelloSolLejano = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: texturaBrillo('rgba(255,255,255,1)', 'rgba(255,235,200,0.5)'),
+  transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+}));
+destelloSolLejano.visible = false;
+escena.add(destelloSolLejano);
+
+// --- Planetas ---
+const grupoOrbitas = new THREE.Group(); escena.add(grupoOrbitas);
+
+for (const p of PLANETAS) {
+  const malla = new THREE.Mesh(
+    new THREE.SphereGeometry(p.tam, 32, 20),
+    new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.85, metalness: 0.0 })
+  );
+  malla.userData.cuerpo = p.id;
+  // Esfera de selección ampliada (invisible al ojo, visible al raycast)
+  const hit = new THREE.Mesh(
+    new THREE.SphereGeometry(p.tam * 2.4, 8, 6),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+  );
+  hit.userData.cuerpo = p.id;
+  malla.add(hit);
+
+  if (p.id === 'saturno') {
+    const anillo = new THREE.Mesh(
+      new THREE.RingGeometry(p.tam * 1.45, p.tam * 2.2, 64),
+      new THREE.MeshBasicMaterial({ color: 0xcdbb8e, transparent: true, opacity: 0.55, side: THREE.DoubleSide })
+    );
+    anillo.rotation.x = Math.PI / 2 - 0.47; // inclinación de ~27°
+    malla.add(anillo);
+  }
+
+  const etqPlaneta = crearEtiqueta(tx(p.nombre), '', () => seleccionarCuerpo(p.id));
+  p.etiquetaObj = etqPlaneta;
+  malla.add(etqPlaneta);
+  escena.add(malla);
+  seleccionables.push(malla, hit);
+  p.malla = malla;
+
+  // Órbita: muestreo de la elipse kepleriana completa, proyectada con la escala activa
+  const lineaOrbita = new THREE.LineLoop(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0x3a4a78, transparent: true, opacity: 0.55 })
+  );
+  grupoOrbitas.add(lineaOrbita);
+  const reconstruirOrbita = () => {
+    const N = 256, arr = new Float32Array(N * 3), v = new THREE.Vector3();
+    const periodoDias = Math.pow(p.a, 1.5) * 365.25;
+    for (let i = 0; i < N; i++) {
+      aEscena(posicionPlaneta(p, J2000 + (i / N) * periodoDias), v);
+      arr[i * 3] = v.x; arr[i * 3 + 1] = v.y; arr[i * 3 + 2] = v.z;
+    }
+    lineaOrbita.geometry.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+    lineaOrbita.geometry.attributes.position.needsUpdate = true;
+    lineaOrbita.geometry.computeBoundingSphere();
+  };
+  reconstruirOrbita();
+  refrescables.push(reconstruirOrbita);
+}
+
+// --- Anillos de referencia de distancia (con etiquetas en AU) ---
+const grupoAnillos = new THREE.Group(); escena.add(grupoAnillos);
+const ANILLOS_REF = [
+  { au: 1,     texto: { en: '1 AU', es: '1 AU' } },
+  { au: 10,    texto: { en: '10 AU', es: '10 AU' } },
+  { au: 30,    texto: { en: '30 AU · Neptune', es: '30 AU · Neptuno' } },
+  { au: 173,   texto: { en: '1 light-day', es: '1 día-luz' } },
+  { au: 63241, texto: { en: '1 light-year', es: '1 año-luz' }, soloLog: true },
+];
+function construirAnillosRef() {
+  // CSS2DRenderer no limpia los <div> de objetos eliminados: quitarlos a mano
+  grupoAnillos.traverse(o => { if (o.isCSS2DObject) o.element.remove(); });
+  grupoAnillos.clear();
+  for (const a of ANILLOS_REF) {
+    if (a.soloLog && modoEscala !== 'log') continue;
+    const r = mapR(a.au), N = 180, arr = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const t = (i / N) * Math.PI * 2;
+      arr[i * 3] = r * Math.cos(t); arr[i * 3 + 1] = 0; arr[i * 3 + 2] = r * Math.sin(t);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+    const linea = new THREE.LineLoop(g, new THREE.LineBasicMaterial({ color: 0x2a3354, transparent: true, opacity: 0.7 }));
+    const etq = crearEtiqueta(tx(a.texto), 'anillo');
+    etq.position.set(r * 0.707, 0, r * 0.707);
+    linea.add(etq);
+    grupoAnillos.add(linea);
+  }
+}
+construirAnillosRef();
+refrescables.push(construirAnillosRef);
+
+// --- Heliopausa (~120 AU) ---
+const grupoHelio = new THREE.Group(); escena.add(grupoHelio);
+const esferaHelio = new THREE.Mesh(
+  new THREE.SphereGeometry(1, 48, 32),
+  new THREE.MeshBasicMaterial({ color: 0x9d7bff, transparent: true, opacity: 0.07, side: THREE.BackSide, depthWrite: false })
+);
+const bordeHelio = new THREE.Mesh(
+  new THREE.SphereGeometry(1, 48, 32),
+  new THREE.MeshBasicMaterial({ color: 0x9d7bff, transparent: true, opacity: 0.05, side: THREE.FrontSide, depthWrite: false })
+);
+grupoHelio.add(esferaHelio, bordeHelio);
+const etqHelio = crearEtiqueta(t('etqHelio'), 'helio', () => seleccionarCuerpo('heliopausa'));
+grupoHelio.add(etqHelio);
+function refrescarHelio() {
+  const r = mapR(120);
+  esferaHelio.scale.setScalar(r);
+  bordeHelio.scale.setScalar(r);
+  etqHelio.position.set(0, r * 0.75, r * 0.55);
+}
+refrescarHelio();
+refrescables.push(refrescarHelio);
+
+// --- Nube de Oort (solo visible en escala log) ---
+const grupoOort = new THREE.Group(); escena.add(grupoOort);
+let etqOortObj;
+{
+  const N = 3000, pos = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    // Radio log-uniforme entre 2,000 y 100,000 AU para poblar todo el cascarón
+    const au = 2000 * Math.pow(50, Math.random());
+    const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2;
+    const s = Math.sqrt(1 - u * u), r = mapR(au, 'log');
+    pos[i * 3] = r * s * Math.cos(th); pos[i * 3 + 1] = r * u; pos[i * 3 + 2] = r * s * Math.sin(th);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  grupoOort.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0x6b7699, size: 0.5, transparent: true, opacity: 0.45, depthWrite: false })));
+  const etqOort = crearEtiqueta(t('etqOort'), 'anillo');
+  etqOortObj = etqOort;
+  etqOort.element.style.pointerEvents = 'auto';
+  etqOort.element.style.cursor = 'pointer';
+  etqOort.element.addEventListener('click', () => seleccionarCuerpo('oort'));
+  etqOort.position.set(0, mapR(9000, 'log') * 0.6, mapR(9000, 'log') * 0.6);
+  grupoOort.add(etqOort);
+}
+function refrescarOort() { grupoOort.visible = (modoEscala === 'log'); }
+refrescables.push(refrescarOort);
+
+// --- Voyagers: marcador + brillo + trayectoria + línea de altura ---
+const MAX_PTS_TRAY = 2600;
+for (const v of VOYAGERS) {
+  const marcador = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.55),
+    new THREE.MeshBasicMaterial({ color: v.color })
+  );
+  marcador.userData.cuerpo = v.id;
+  const brillo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: texturaBrillo('rgba(255,255,255,1)', 'rgba(255,255,255,0.25)'),
+    color: v.color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  brillo.scale.setScalar(3.2);
+  marcador.add(brillo);
+  const hit = new THREE.Mesh(
+    new THREE.SphereGeometry(2.2, 8, 6),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+  );
+  hit.userData.cuerpo = v.id;
+  marcador.add(hit);
+  marcador.add(crearEtiqueta(`${v.nombre}<span class="sub"></span>`, v.css, () => seleccionarCuerpo(v.id)));
+  escena.add(marcador);
+  seleccionables.push(marcador, hit);
+  v.marcador = marcador;
+  v.etiquetaSub = marcador.children[2].element.querySelector('.sub');
+
+  // Trayectoria: geometría preasignada, se dibuja hasta la fecha simulada
+  const gTray = new THREE.BufferGeometry();
+  gTray.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAX_PTS_TRAY * 3), 3));
+  v.lineaTray = new THREE.Line(gTray, new THREE.LineBasicMaterial({ color: v.color, transparent: true, opacity: 0.85 }));
+  v.lineaTray.frustumCulled = false;
+  escena.add(v.lineaTray);
+
+  // Línea vertical hasta el plano de la eclíptica: hace visible la 3ª dimensión
+  const gAlt = new THREE.BufferGeometry();
+  gAlt.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+  v.lineaAltura = new THREE.Line(gAlt, new THREE.LineDashedMaterial({ color: v.color, transparent: true, opacity: 0.35, dashSize: 1.2, gapSize: 0.8 }));
+  v.lineaAltura.frustumCulled = false;
+  escena.add(v.lineaAltura);
+}
+
+function reconstruirTrayectoria(v, jdHasta) {
+  const attr = v.lineaTray.geometry.attributes.position;
+  let n = 0;
+  const vec = new THREE.Vector3();
+  if (jdHasta > v.jdLanzamiento) {
+    for (let jd = v.jdLanzamiento; jd < jdHasta && n < MAX_PTS_TRAY - 1; jd += 20) {
+      aEscena(posicionVoyager(v, jd), vec);
+      attr.setXYZ(n++, vec.x, vec.y, vec.z);
+    }
+    aEscena(posicionVoyager(v, jdHasta), vec);
+    attr.setXYZ(n++, vec.x, vec.y, vec.z);
+  }
+  v.lineaTray.geometry.setDrawRange(0, n);
+  attr.needsUpdate = true;
+}
+
+// --- Marcadores de rumbo hacia las constelaciones destino ---
+const etiquetasConstel = [];
+for (const v of VOYAGERS) {
+  const lat = v.latEcl * DEG, lon = v.lonEcl * DEG, R = 26000;
+  const dir = new THREE.Vector3(Math.cos(lat) * Math.cos(lon), Math.sin(lat), -Math.cos(lat) * Math.sin(lon));
+  const etq = crearEtiqueta(t('constelacion')(v), 'constel');
+  etq.position.copy(dir.multiplyScalar(R));
+  escena.add(etq);
+  etiquetasConstel.push({ el: etq.element, v });
+}
+
+construirPuntosControl();
+
+/* ============================================================
+   8. TIEMPO DE SIMULACIÓN
+   ============================================================ */
+const JD_HOY = Date.now() / 86400000 + 2440587.5;
+let jdSim = JD_HOY;
+let reproduciendo = false;
+let velocidadDiasPorSeg = 30;
+let arrastrandoSlider = false;
+let jdUltimaTrayectoria = -1e9;
+let escalaTrayectoria = modoEscala;
+
+const sliderTiempo = $('slider-tiempo');
+sliderTiempo.value = anioDesdeJd(jdSim);
+
+function actualizarFechaUI() {
+  $('fecha').textContent = fechaDesdeJd(jdSim).toLocaleDateString(LOCALES[idioma], { day: 'numeric', month: 'long', year: 'numeric' });
+  if (!arrastrandoSlider) sliderTiempo.value = anioDesdeJd(jdSim);
+}
+
+/* ============================================================
+   9. PANEL DE INFORMACIÓN Y SELECCIÓN
+   ============================================================ */
+let cuerpoSeleccionado = null;
+
+// Anillo de resaltado alrededor del cuerpo elegido
+const resaltado = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.strokeStyle = 'rgba(160,200,255,0.9)'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(64, 64, 56, 0, Math.PI * 2); ctx.stroke();
+    return new THREE.CanvasTexture(c);
+  })(),
+  transparent: true, depthWrite: false, depthTest: false,
+}));
+resaltado.visible = false;
+escena.add(resaltado);
+
+function statsHTML(filas) {
+  return filas.map(([k, v]) => `<div class="stat"><span class="stat-k">${k}</span><span class="stat-v">${v}</span></div>`).join('');
+}
+
+function datosPanelCuerpo(id) {
+  if (id === 'sol') {
+    return { tipo: t('tipoEstrella'), nombre: tx(SOL.nombre), dato: tx(SOL.dato), extra: '',
+      stats: [
+        [t('kRadio'), `${fmt(SOL.radioKm)} km ${t('tierras109')}`],
+        [t('kMasaSS'), '99.86 %'],
+        [t('kLuzTierra'), '8 min 19 s'],
+        [t('kLuzV1'), fmtTiempoLuz(distanciaVoyagerAU(VOYAGERS[0], jdSim))],
+      ] };
+  }
+  const planeta = PLANETAS.find(p => p.id === id);
+  if (planeta) {
+    const pos = posicionPlaneta(planeta, jdSim);
+    const r = Math.hypot(pos.x, pos.y, pos.z);
+    const periodoAnios = Math.pow(planeta.a, 1.5);
+    return { tipo: t('tipoPlaneta'), nombre: tx(planeta.nombre), dato: tx(planeta.dato), extra: '',
+      stats: [
+        [t('kDistAhora'), `${fmt(r, 2)} AU · ${fmt(r * AU_KM / 1e6, 0)} M km`],
+        [t('kTiempoLuz'), fmtTiempoLuz(r)],
+        [t('kPeriodo'), periodoAnios < 1 ? `${fmt(periodoAnios * 365.25, 0)} ${t('uDias')}` : `${fmt(periodoAnios, 1)} ${t('uAnios')}`],
+        [t('kVelAhora'), `${fmt(velocidadOrbital(planeta, r), 1)} km/s`],
+        [t('kRadio'), `${fmt(planeta.radioKm)} km`],
+      ] };
+  }
+  const v = VOYAGERS.find(x => x.id === id);
+  if (v) {
+    const d = distanciaVoyagerAU(v, jdSim);
+    const anios = Math.max(0, (jdSim - v.jdLanzamiento) / 365.25);
+    return { tipo: t('tipoSonda'), nombre: v.nombre, dato: tx(v.dato),
+      extra: `<button class="btn-grande" data-pv="${v.id}">${t('btnVerSol')}</button>`,
+      stats: [
+        [t('kDist'), `${fmt(d, 1)} AU · ${fmt(d * AU_KM / 1e6, 0)} M km`],
+        [t('kTiempoLuz'), fmtTiempoLuz(d)],
+        [t('kVel'), `${fmt(v.velKms, 1)} km/s (${fmt(v.velKms * 3600, 0)} km/h)`],
+        [t('kLanz'), tx(v.lanzamiento)],
+        [t('kAniosViaje'), `${fmt(anios, 1)} ${t('uAnios')}`],
+        [t('kRumbo'), tx(v.rumbo)],
+        [t('kCruce'), tx(v.cruceHeliopausa)],
+      ] };
+  }
+  const extra = CUERPOS_EXTRA[id];
+  if (extra) return { tipo: tx(extra.tipo), nombre: tx(extra.nombre), dato: tx(extra.dato), stats: tx(extra.stats), extra: '' };
+  return null;
+}
+
+function renderizarPanel() {
+  const d = datosPanelCuerpo(cuerpoSeleccionado);
+  if (!d) return;
+  $('info-tipo').textContent = d.tipo;
+  $('info-nombre').textContent = d.nombre;
+  $('info-stats').innerHTML = statsHTML(d.stats);
+  $('info-dato').textContent = d.dato;
+  $('info-extra').innerHTML = d.extra + (objetoDeCuerpo(cuerpoSeleccionado) ? `<button class="btn-centrar" id="btn-centrar">${t('btnCentrar')}</button>` : '');
+  const btnPv = $('info-extra').querySelector('[data-pv]');
+  if (btnPv) btnPv.addEventListener('click', () => entrarVistaVoyager(btnPv.dataset.pv));
+  const btnCentrar = $('btn-centrar');
+  if (btnCentrar) btnCentrar.addEventListener('click', centrarEnSeleccion);
+}
+
+function objetoDeCuerpo(id) {
+  if (id === 'sol') return sol;
+  const p = PLANETAS.find(x => x.id === id); if (p) return p.malla;
+  const v = VOYAGERS.find(x => x.id === id); if (v) return v.marcador;
+  return null;
+}
+
+function seleccionarCuerpo(id) {
+  cuerpoSeleccionado = id;
+  renderizarPanel();
+  $('info').classList.add('visible');
+  const obj = objetoDeCuerpo(id);
+  resaltado.visible = !!obj;
+}
+
+function cerrarPanel() {
+  cuerpoSeleccionado = null;
+  resaltado.visible = false;
+  $('info').classList.remove('visible');
+}
+
+function centrarEnSeleccion() {
+  const obj = objetoDeCuerpo(cuerpoSeleccionado);
+  if (!obj) return;
+  const destino = obj.position.clone();
+  const dist = Math.max(8, destino.length() * 0.18);
+  const dir = camara.position.clone().sub(controles.target).normalize();
+  volarCamara(destino.clone().add(dir.multiplyScalar(dist)), destino, 1.2);
+}
+
+/* ============================================================
+   10. CÁMARA: vuelos suaves y vistas predefinidas
+   ============================================================ */
+const vuelo = { activo: false, t0: 0, dur: 1, dePos: new THREE.Vector3(), aPos: new THREE.Vector3(), deTgt: new THREE.Vector3(), aTgt: new THREE.Vector3() };
+
+function volarCamara(aPos, aTgt, dur = 1.4) {
+  vuelo.activo = true; vuelo.t0 = performance.now() / 1000; vuelo.dur = dur;
+  vuelo.dePos.copy(camara.position); vuelo.aPos.copy(aPos);
+  vuelo.deTgt.copy(controles.target); vuelo.aTgt.copy(aTgt);
+}
+
+function pasoVuelo() {
+  if (!vuelo.activo) return;
+  let t = (performance.now() / 1000 - vuelo.t0) / vuelo.dur;
+  if (t >= 1) { t = 1; vuelo.activo = false; }
+  const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; // ease in-out cúbico
+  camara.position.lerpVectors(vuelo.dePos, vuelo.aPos, e);
+  controles.target.lerpVectors(vuelo.deTgt, vuelo.aTgt, e);
+}
+
+// Las vistas se definen en AU para funcionar en ambas escalas
+const VISTAS = {
+  interior:  { au: 2.6 },
+  planetas:  { au: 38 },
+  voyagers:  { au: 230 },
+};
+function irAVista(nombre, dur = 1.4) {
+  const v = VISTAS[nombre];
+  // Distancia de cámara tal que un radio de v.au quepa en el campo visual
+  const r = mapR(v.au) * 2.3;
+  const dir = new THREE.Vector3(0.32, 0.68, 1).normalize();
+  volarCamara(dir.multiplyScalar(r), new THREE.Vector3(0, 0, 0), dur);
+  document.querySelectorAll('#barra-vistas [data-vista]').forEach(b => b.classList.toggle('activo', b.dataset.vista === nombre));
+}
+
+/* ============================================================
+   11. MODO "PERSPECTIVA VOYAGER"
+   La cámara se coloca en la sonda con escala REAL (lineal): el Sol
+   queda reducido a un punto de luz entre las estrellas.
+   ============================================================ */
+let enVistaVoyager = false;
+let estadoPrevio = null;
+
+function entrarVistaVoyager(idVoyager) {
+  const v = VOYAGERS.find(x => x.id === idVoyager);
+  if (!v || enVistaVoyager) return;
+  enVistaVoyager = true;
+  reproduciendo = false;
+  actualizarBotonPlay();
+
+  estadoPrevio = {
+    modo: modoEscala,
+    camPos: camara.position.clone(),
+    target: controles.target.clone(),
+    fov: camara.fov,
+  };
+  if (modoEscala !== 'lineal') aplicarEscala('lineal', false);
+
+  // Ocultar todo lo que rompería la ilusión de "espacio vacío"
+  grupoOrbitas.visible = grupoAnillos.visible = grupoHelio.visible = grupoOort.visible = false;
+  for (const x of VOYAGERS) { x.marcador.visible = x.lineaTray.visible = x.lineaAltura.visible = false; }
+  resaltado.visible = false;
+  brilloSol.visible = false;
+  destelloSolLejano.visible = true;
+  cssRenderer.domElement.style.display = 'none';
+  tooltip.style.display = 'none';
+  cerrarPanel();
+
+  // Cámara en la posición real de la sonda, mirando al Sol
+  const pos = aEscena(posicionVoyager(v, jdSim));
+  camara.position.copy(pos);
+  controles.target.set(0, 0, 0);
+  camara.fov = 55; camara.updateProjectionMatrix();
+  controles.enableZoom = false; controles.enablePan = false;
+  vuelo.activo = false;
+
+  // Textos del panel inmersivo
+  const d = distanciaVoyagerAU(v, jdSim);
+  const mag = -26.74 + 5 * Math.log10(d);                       // magnitud aparente del Sol
+  const vecesLuna = Math.pow(10, (-12.7 - mag) / 2.5);          // brillo vs. Luna llena
+  const fraccionDia = Math.round(d * d);                        // atenuación 1/d²
+  $('vv-titulo').textContent = t('vvTitulo')(v.nombre);
+  $('vv-titulo').style.color = '#' + v.color.toString(16).padStart(6, '0');
+  $('vv-texto').innerHTML = t('vvTexto')(fmt(d, 1), fmt(d * AU_KM / 1e6, 0), fmt(vecesLuna, 0), fmt(fraccionDia, 0));
+  $('vv-luz').textContent = t('vvLuz')(fmtTiempoLuz(d));
+  $('vista-voyager').classList.add('visible');
+  document.body.classList.add('modo-voyager');
+}
+
+function salirVistaVoyager() {
+  if (!enVistaVoyager) return;
+  enVistaVoyager = false;
+  $('vista-voyager').classList.remove('visible');
+  document.body.classList.remove('modo-voyager');
+
+  grupoOrbitas.visible = grupoAnillos.visible = grupoHelio.visible = true;
+  for (const x of VOYAGERS) { x.marcador.visible = x.lineaTray.visible = x.lineaAltura.visible = true; }
+  brilloSol.visible = true;
+  destelloSolLejano.visible = false;
+  cssRenderer.domElement.style.display = '';
+  controles.enableZoom = true; controles.enablePan = true;
+  camara.fov = estadoPrevio.fov; camara.updateProjectionMatrix();
+
+  if (estadoPrevio.modo !== modoEscala) aplicarEscala(estadoPrevio.modo, false);
+  refrescarOort();
+  camara.position.copy(estadoPrevio.camPos);
+  controles.target.copy(estadoPrevio.target);
+}
+
+/* ============================================================
+   12. CAMBIO DE ESCALA
+   ============================================================ */
+function aplicarEscala(modo, remapearCamara = true) {
+  if (modo === modoEscala) return;
+  const modoAnterior = modoEscala;
+  modoEscala = modo;
+
+  for (const fn of refrescables) fn();
+  jdUltimaTrayectoria = -1e9; // fuerza reconstrucción de trayectorias
+
+  if (remapearCamara) {
+    // Conserva el encuadre relativo usando la heliopausa (120 AU) como ancla:
+    // la cámara se escala por el mismo factor que la geometría de referencia.
+    const factor = mapR(120, modo) / mapR(120, modoAnterior);
+    camara.position.multiplyScalar(factor);
+    controles.target.multiplyScalar(factor);
+  }
+  $('btn-log').classList.toggle('activo', modo === 'log');
+  $('btn-lineal').classList.toggle('activo', modo === 'lineal');
+}
+
+/* ============================================================
+   13. INTERACCIÓN: hover (tooltip) y clic (selección)
+   ============================================================ */
+const raycaster = new THREE.Raycaster();
+const puntero = new THREE.Vector2();
+const tooltip = $('tooltip');
+let posPointerDown = null;
+
+function cuerpoBajoCursor(ev) {
+  puntero.x = (ev.clientX / window.innerWidth) * 2 - 1;
+  puntero.y = -(ev.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(puntero, camara);
+  const hits = raycaster.intersectObjects(seleccionables, false);
+  return hits.length ? hits[0].object.userData.cuerpo : null;
+}
+
+function textoTooltip(id) {
+  if (id === 'sol') return `<b>${tx(SOL.nombre)}</b><br>${t('ttSol')}`;
+  const p = PLANETAS.find(x => x.id === id);
+  if (p) {
+    const pos = posicionPlaneta(p, jdSim);
+    const r = Math.hypot(pos.x, pos.y, pos.z);
+    return `<b>${tx(p.nombre)}</b><br>` +
+      `${t('ttDist')}: ${fmt(r, 2)} AU (${fmt(r * AU_KM / 1e6, 0)} M km)<br>` +
+      `${t('ttLuz')}: ${fmtTiempoLuz(r)}<br>` +
+      `${t('ttVelOrb')}: ${fmt(velocidadOrbital(p, r), 1)} km/s`;
+  }
+  const v = VOYAGERS.find(x => x.id === id);
+  if (v) {
+    const d = distanciaVoyagerAU(v, jdSim);
+    return `<b>${v.nombre}</b><br>` +
+      `${t('ttDist')}: ${fmt(d, 1)} AU (${fmt(d * AU_KM / 1e6, 0)} M km)<br>` +
+      `${t('ttLuz')}: ${fmtTiempoLuz(d)}<br>` +
+      `${t('ttVel')}: ${fmt(v.velKms, 1)} km/s`;
+  }
+  return null;
+}
+
+renderer.domElement.addEventListener('pointermove', (ev) => {
+  if (enVistaVoyager) { tooltip.style.display = 'none'; return; }
+  const id = cuerpoBajoCursor(ev);
+  if (id) {
+    tooltip.innerHTML = textoTooltip(id) || '';
+    tooltip.style.display = 'block';
+    tooltip.style.left = Math.min(ev.clientX + 16, window.innerWidth - 270) + 'px';
+    tooltip.style.top = Math.min(ev.clientY + 14, window.innerHeight - 110) + 'px';
+    renderer.domElement.style.cursor = 'pointer';
+  } else {
+    tooltip.style.display = 'none';
+    renderer.domElement.style.cursor = '';
+  }
+});
+
+renderer.domElement.addEventListener('pointerdown', (ev) => { posPointerDown = [ev.clientX, ev.clientY]; });
+renderer.domElement.addEventListener('pointerup', (ev) => {
+  if (!posPointerDown || enVistaVoyager) return;
+  const dx = ev.clientX - posPointerDown[0], dy = ev.clientY - posPointerDown[1];
+  posPointerDown = null;
+  if (dx * dx + dy * dy > 36) return; // fue arrastre, no clic
+  const id = cuerpoBajoCursor(ev);
+  if (id) seleccionarCuerpo(id); else cerrarPanel();
+});
+
+window.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape') { if (enVistaVoyager) salirVistaVoyager(); else cerrarPanel(); }
+  if (ev.key === ' ' && !enVistaVoyager && document.activeElement.tagName !== 'INPUT') {
+    ev.preventDefault(); alternarPlay();
+  }
+});
+
+/* ============================================================
+   14. CONTROLES DE UI
+   ============================================================ */
+// Retraducir toda la interfaz (estática, dinámica y etiquetas 3D)
+function aplicarIdioma(nuevo) {
+  idioma = nuevo;
+  document.documentElement.lang = nuevo;
+  document.title = t('docTitle');
+  $('btn-en').classList.toggle('activo', nuevo === 'en');
+  $('btn-es').classList.toggle('activo', nuevo === 'es');
+
+  // Encabezado y controles de tiempo
+  document.querySelector('#hud h1').innerHTML = `${t('titulo')}<span class="sub">${t('sub')}</span>`;
+  $('btn-hoy').textContent = t('hoy');
+  [...$('sel-velocidad').options].forEach((o, i) => { o.textContent = t('velocidades')[i]; });
+
+  // Barra de vistas
+  $('etq-vista').textContent = t('etqVista');
+  $('etq-escala').textContent = t('etqEscala');
+  $('etq-persp').textContent = t('etqPersp');
+  document.querySelector('[data-vista="interior"]').textContent = t('vInterior');
+  document.querySelector('[data-vista="planetas"]').textContent = t('vPlanetas');
+  document.querySelector('[data-vista="voyagers"]').textContent = t('vVoyagers');
+  $('btn-log').textContent = t('log');
+  $('btn-lineal').textContent = t('real');
+  $('btn-pv1').textContent = t('desdeV1');
+  $('btn-pv2').textContent = t('desdeV2');
+
+  // Tarjeta de escala, leyenda y avisos
+  $('escala-titulo-txt').textContent = t('escalaTitulo');
+  $('escala-cuerpo').innerHTML = t('escalaCuerpoHTML');
+  document.querySelectorAll('#leyenda .ley-txt').forEach((el, i) => { el.textContent = t('leyenda')[i]; });
+  $('nota-escala').textContent = t('notaEscala');
+  $('vv-mira').innerHTML = `${t('vvMira')}<br>↓`;
+  $('vv-volver').textContent = t('vvVolver');
+  const pista = $('pista'); if (pista) pista.textContent = t('pista');
+  $('err-titulo').textContent = t('errTitulo');
+  $('err-texto').innerHTML = t('errTexto');
+
+  // Etiquetas 3D
+  etqSol.element.textContent = tx(SOL.nombre);
+  for (const p of PLANETAS) p.etiquetaObj.element.textContent = tx(p.nombre);
+  etqHelio.element.textContent = t('etqHelio');
+  etqOortObj.element.textContent = t('etqOort');
+  for (const c of etiquetasConstel) c.el.textContent = t('constelacion')(c.v);
+  construirAnillosRef();
+
+  // Contenido dinámico abierto
+  if (cuerpoSeleccionado) renderizarPanel();
+  actualizarFechaUI();
+}
+$('btn-en').addEventListener('click', () => aplicarIdioma('en'));
+$('btn-es').addEventListener('click', () => aplicarIdioma('es'));
+
+function actualizarBotonPlay() {
+  $('btn-play').textContent = reproduciendo ? '⏸' : '▶';
+  $('btn-play').classList.toggle('activo', reproduciendo);
+}
+function alternarPlay() { reproduciendo = !reproduciendo; actualizarBotonPlay(); }
+
+$('btn-play').addEventListener('click', alternarPlay);
+$('sel-velocidad').addEventListener('change', (e) => { velocidadDiasPorSeg = +e.target.value; });
+$('btn-hoy').addEventListener('click', () => { jdSim = JD_HOY; reproduciendo = false; actualizarBotonPlay(); });
+
+sliderTiempo.addEventListener('pointerdown', () => { arrastrandoSlider = true; });
+sliderTiempo.addEventListener('pointerup', () => { arrastrandoSlider = false; });
+sliderTiempo.addEventListener('input', (e) => { jdSim = jdDesdeAnio(+e.target.value); });
+
+document.querySelectorAll('#barra-vistas [data-vista]').forEach(b =>
+  b.addEventListener('click', () => { if (enVistaVoyager) salirVistaVoyager(); irAVista(b.dataset.vista); }));
+$('btn-log').addEventListener('click', () => aplicarEscala('log'));
+$('btn-lineal').addEventListener('click', () => aplicarEscala('lineal'));
+$('btn-pv1').addEventListener('click', () => entrarVistaVoyager('voyager1'));
+$('btn-pv2').addEventListener('click', () => entrarVistaVoyager('voyager2'));
+$('vv-volver').addEventListener('click', salirVistaVoyager);
+$('info-cerrar').addEventListener('click', cerrarPanel);
+$('escala-titulo').addEventListener('click', () => $('tarjeta-escala').classList.toggle('cerrada'));
+document.querySelectorAll('#leyenda [data-cuerpo]').forEach(el =>
+  el.addEventListener('click', () => seleccionarCuerpo(el.dataset.cuerpo)));
+
+// La pista inicial se desvanece tras 9 segundos
+setTimeout(() => { const p = $('pista'); p.style.opacity = '0'; setTimeout(() => p.remove(), 1500); }, 9000);
+
+window.addEventListener('resize', () => {
+  camara.aspect = window.innerWidth / window.innerHeight;
+  camara.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  cssRenderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ============================================================
+   15. BUCLE DE ANIMACIÓN
+   ============================================================ */
+const FACTOR_BALON = 0.22 / (2 * SOL.radioKm * 1000);  // m reales → m a escala balón
+let tPrevio = performance.now() / 1000;
+let framesPanel = 0;
+
+function actualizarMundo() {
+  // Planetas (cada frame: la mecánica kepleriana es barata)
+  for (const p of PLANETAS) aEscena(posicionPlaneta(p, jdSim), p.malla.position);
+
+  // Voyagers
+  const visiblesVoy = !enVistaVoyager;
+  for (const v of VOYAGERS) {
+    const lanzado = jdSim >= v.jdLanzamiento;
+    v.marcador.visible = lanzado && visiblesVoy;
+    v.lineaTray.visible = lanzado && visiblesVoy;
+    v.lineaAltura.visible = lanzado && visiblesVoy;
+    if (!lanzado) continue;
+    aEscena(posicionVoyager(v, jdSim), v.marcador.position);
+    // Línea de altura sobre el plano de la eclíptica
+    const a = v.lineaAltura.geometry.attributes.position;
+    a.setXYZ(0, v.marcador.position.x, v.marcador.position.y, v.marcador.position.z);
+    a.setXYZ(1, v.marcador.position.x, 0, v.marcador.position.z);
+    a.needsUpdate = true;
+    v.lineaAltura.computeLineDistances();
+    // Pulso sutil del marcador
+    const s = 1 + 0.18 * Math.sin(performance.now() / 350);
+    v.marcador.scale.setScalar(s);
+  }
+
+  // Reconstruir trayectorias solo cuando la fecha avanza lo suficiente
+  if (Math.abs(jdSim - jdUltimaTrayectoria) > 15 || escalaTrayectoria !== modoEscala) {
+    for (const v of VOYAGERS) reconstruirTrayectoria(v, jdSim);
+    jdUltimaTrayectoria = jdSim;
+    escalaTrayectoria = modoEscala;
+  }
+
+  // Anillo de resaltado sigue al cuerpo seleccionado
+  if (resaltado.visible && cuerpoSeleccionado) {
+    const obj = objetoDeCuerpo(cuerpoSeleccionado);
+    if (obj) {
+      resaltado.position.copy(obj.position);
+      const base = obj === sol ? RADIO_SOL : (obj.geometry.parameters.radius || 0.6);
+      resaltado.scale.setScalar(base * 4.5);
+    }
+  }
+
+  // Destello del Sol en vista Voyager: tamaño angular constante
+  if (enVistaVoyager) {
+    destelloSolLejano.scale.setScalar(camara.position.length() * 0.05);
+  }
+
+  // Etiquetas de distancia bajo los nombres de las sondas (cada ~30 frames)
+  if (framesPanel % 30 === 0) {
+    for (const v of VOYAGERS) v.etiquetaSub.textContent = `${fmt(distanciaVoyagerAU(v, jdSim), 1)} AU`;
+    // Tarjeta del balón de fútbol: distancia a escala, en metros → km
+    for (const [v, elId] of [[VOYAGERS[0], 'escala-v1'], [VOYAGERS[1], 'escala-v2']]) {
+      const m = distanciaVoyagerAU(v, jdSim) * AU_KM * 1000 * FACTOR_BALON;
+      $(elId).textContent = `${fmt(m / 1000, 1)} km`;
+    }
+    // Panel de información en vivo
+    if (cuerpoSeleccionado && $('info').classList.contains('visible')) renderizarPanel();
+  }
+  framesPanel++;
+}
+
+function animar() {
+  requestAnimationFrame(animar);
+  const ahora = performance.now() / 1000;
+  const dt = Math.min(ahora - tPrevio, 0.1);
+  tPrevio = ahora;
+
+  if (reproduciendo && !enVistaVoyager) {
+    jdSim = clamp(jdSim + velocidadDiasPorSeg * dt, jdDesdeAnio(1977), jdDesdeAnio(2076));
+  }
+
+  actualizarFechaUI();
+  actualizarMundo();
+  pasoVuelo();
+  controles.update();
+  renderer.render(escena, camara);
+  cssRenderer.render(escena, camara);
+}
+
+/* ============================================================
+   16. ARRANQUE: pequeño vuelo cinematográfico de entrada
+   ============================================================ */
+window.__app = true;
+actualizarBotonPlay();
+camara.position.set(mapR(900), mapR(700), mapR(1400));
+irAVista('voyagers', 3.2);
+animar();
+</script>
+</body>
+</html>

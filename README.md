@@ -10,14 +10,6 @@
 
 ---
 
-## 📸 Demo / Preview
-
-![Demo](assets/demo.png)
-
-> **To add the preview:** create an `assets/` folder, record a short capture of the app (e.g. with [ScreenToGif](https://www.screentogif.com/) or `Win + Alt + R`), save it as `assets/demo.gif`, and the image above will render automatically.
-
----
-
 ## 🌌 About the Project
 
 Most solar system diagrams lie to you. They have to — at true scale, if the Sun were a soccer ball, Earth would be a grain of sand 24 meters away, and the Voyager probes would be on the other side of your city.

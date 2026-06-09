@@ -12,7 +12,7 @@
 
 ## 📸 Demo / Preview
 
-![Demo](assets/demo.gif)
+![Demo](assets/demo.png)
 
 > **To add the preview:** create an `assets/` folder, record a short capture of the app (e.g. with [ScreenToGif](https://www.screentogif.com/) or `Win + Alt + R`), save it as `assets/demo.gif`, and the image above will render automatically.
 

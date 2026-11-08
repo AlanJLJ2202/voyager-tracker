@@ -1,0 +1,1934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Universe at Scale · Voyager Tracker</title>
+<style>
+  /* ============================================================
+     ESTILOS — mismo lenguaje visual que el rastreador Voyager
+     ============================================================ */
+  :root {
+    --bg: #03040a;
+    --panel-bg: rgba(10, 15, 28, 0.84);
+    --panel-border: rgba(130, 160, 255, 0.16);
+    --text: #dde4f5;
+    --text-dim: #8b96b8;
+    --accent: #6ea8ff;
+    --v1: #ffc864;
+    --v2: #64d2ff;
+    --helio: #9d7bff;
+    --ok: #7ee2a8;
+    --prob: #ffd36e;
+    --esp: #d7a3ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
+  body { font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; color: var(--text); font-size: 14px; }
+  canvas { display: block; touch-action: none; }
+  #scene-container { position: fixed; inset: 0; }
+
+  .panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  }
+  button, select {
+    font-family: inherit; font-size: 12.5px; color: var(--text);
+    background: rgba(110, 140, 230, 0.14);
+    border: 1px solid rgba(130, 160, 255, 0.22);
+    border-radius: 8px; padding: 5px 10px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  button:hover, select:hover { background: rgba(110, 140, 230, 0.30); }
+  button.activo { background: rgba(110, 160, 255, 0.45); border-color: var(--accent); }
+  select { max-width: 100%; }
+  select option, select optgroup { background: #0d1324; color: var(--text); }
+
+  /* ---- Selector de modo (Voyager / Universo) ---- */
+  #modos { display: flex; gap: 4px; margin-bottom: 10px; padding-right: 80px; }
+  #modos a {
+    flex: 1; text-align: center; text-decoration: none; color: var(--text-dim);
+    font-size: 11.5px; padding: 5px 6px; border-radius: 8px;
+    border: 1px solid rgba(130, 160, 255, 0.18); background: rgba(110, 140, 230, 0.08);
+    transition: background 0.15s, color 0.15s;
+  }
+  #modos a:hover { background: rgba(110, 140, 230, 0.25); color: var(--text); }
+  #modos a.activo { color: var(--text); background: rgba(110, 160, 255, 0.38); border-color: var(--accent); }
+
+  /* ---- HUD (arriba-izquierda) ---- */
+  #hud {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    padding: 14px 18px; width: 330px; max-width: calc(100vw - 32px);
+  }
+  #sel-idioma { position: absolute; top: 12px; right: 14px; display: flex; gap: 4px; }
+  #sel-idioma button { padding: 3px 8px; font-size: 11px; }
+  #hud h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.4px; }
+  #hud h1 .sub { display: block; font-size: 11px; font-weight: 400; color: var(--text-dim); margin-top: 2px; }
+  #region { margin-top: 10px; font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.9px; }
+  #region b { color: var(--text); font-weight: 600; }
+  #vista-etq { margin-top: 8px; font-size: 10.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.9px; }
+  #vista-ancho { font-size: 21px; font-weight: 600; color: var(--accent); margin: 1px 0 1px; font-variant-numeric: tabular-nums; line-height: 1.25; }
+  #vista-pot { font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  #mano { margin-top: 8px; font-size: 12.5px; line-height: 1.45; color: #c3cce4; border-top: 1px solid rgba(130,160,255,0.1); padding-top: 8px; }
+  #mano b { color: var(--text); }
+
+  /* ---- Identidad (arriba-derecha) ---- */
+  #identidad { position: fixed; top: 20px; right: 20px; z-index: 40; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  #redes { display: flex; gap: 12px; }
+  #redes a { display: block; width: 28px; height: 28px; color: #fff; opacity: 0.7; transition: opacity 0.2s, filter 0.2s; }
+  #redes a svg { width: 100%; height: 100%; fill: currentColor; display: block; }
+  #redes a:hover { opacity: 1; filter: drop-shadow(0 0 6px rgba(160,195,255,0.95)) drop-shadow(0 0 16px rgba(110,168,255,0.55)); }
+  #firma { font-family: Consolas, "SF Mono", "Courier New", monospace; font-size: 9px; color: #fff; opacity: 0.4; letter-spacing: 0.5px; user-select: none; }
+
+  /* ---- Regla de potencias de diez (abajo-centro) ---- */
+  #regla {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 12;
+    width: 900px; max-width: calc(100vw - 24px); padding: 10px 18px 10px;
+  }
+  #regla-pista { position: relative; height: 46px; margin: 0 6px; cursor: pointer; touch-action: none; }
+  #regla-linea { position: absolute; left: 0; right: 0; top: 30px; height: 2px; background: linear-gradient(90deg, #4f87d4, #ffd36e 30%, #9d7bff 55%, #d7a3ff 80%, #ff8a6e); border-radius: 2px; opacity: 0.7; }
+  .tick { position: absolute; top: 34px; font-size: 9px; color: #56618a; transform: translateX(-50%); pointer-events: none; font-variant-numeric: tabular-nums; }
+  .parada {
+    position: absolute; top: 2px; transform: translateX(-50%);
+    width: 28px; height: 26px; padding: 0; font-size: 15px; line-height: 24px; border-radius: 8px;
+    background: rgba(110,140,230,0.10);
+  }
+  .parada.activo { background: rgba(110,160,255,0.45); border-color: var(--accent); }
+  #regla-cursor {
+    position: absolute; top: 22px; width: 14px; height: 18px; transform: translateX(-50%);
+    pointer-events: none;
+  }
+  #regla-cursor::before { content: ""; position: absolute; left: 6px; top: 0; width: 2px; height: 18px; background: #fff; border-radius: 1px; box-shadow: 0 0 8px rgba(160,200,255,0.9); }
+  #regla-fila { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  #regla-nombre { flex: 1; font-size: 12.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #regla-nombre b { color: var(--text); }
+
+  /* ---- Tarjeta de datos curiosos (abajo-izquierda) ---- */
+  #curiosidad {
+    position: fixed; bottom: 128px; left: 16px; z-index: 10;
+    width: 330px; max-width: calc(100vw - 32px); padding: 13px 16px; font-size: 13px; line-height: 1.55;
+  }
+  #curiosidad h3 { font-size: 12.5px; margin-bottom: 6px; cursor: pointer; user-select: none; }
+  #curiosidad h3 .flecha { float: right; color: var(--text-dim); transition: transform 0.2s; }
+  #curiosidad.cerrada .flecha { transform: rotate(-90deg); }
+  #curiosidad.cerrada #cur-cuerpo { display: none; }
+  #cur-texto { color: #c3cce4; min-height: 60px; }
+  #cur-texto b { color: var(--text); }
+  #cur-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+  #cur-nav button { padding: 2px 10px; }
+  #cur-num { font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+  /* ---- Panel de información (derecha) ---- */
+  #info {
+    position: fixed; top: 70px; right: 16px; z-index: 11;
+    width: 330px; max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 200px); overflow-y: auto; padding: 18px 20px;
+    transform: translateX(370px); opacity: 0; transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+  #info.visible { transform: translateX(0); opacity: 1; }
+  .cerrar { position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; padding: 0; border-radius: 50%; font-size: 13px; line-height: 1; }
+  #info-tipo, .chip {
+    display: inline-block; font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--accent);
+    border: 1px solid rgba(110,168,255,0.4); border-radius: 20px; padding: 2px 9px; margin-bottom: 6px;
+  }
+  #info h2 { font-size: 22px; font-weight: 600; margin-bottom: 12px; padding-right: 24px; }
+  .stat { display: flex; justify-content: space-between; gap: 12px; padding: 5.5px 0; border-bottom: 1px solid rgba(130,160,255,0.08); }
+  .stat-k { color: var(--text-dim); font-size: 12.5px; }
+  .stat-v { text-align: right; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  #info-dato { margin-top: 12px; font-size: 13px; line-height: 1.55; color: #c3cce4; }
+  #info-ctx { margin-top: 10px; font-size: 12.5px; line-height: 1.5; color: var(--prob); }
+  #info-extra { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .btn-grande { width: 100%; padding: 8px; font-size: 13px; font-weight: 600; background: rgba(255,200,100,0.16); border-color: rgba(255,200,100,0.45); }
+  .btn-grande:hover { background: rgba(255,200,100,0.32); }
+
+  /* ---- Comparador (modal) ---- */
+  #comparador {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.97); z-index: 50;
+    width: 600px; max-width: calc(100vw - 24px); max-height: calc(100vh - 24px); overflow-y: auto;
+    padding: 18px 20px; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+  }
+  #comparador.visible { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+  #comparador h2 { font-size: 17px; margin-bottom: 10px; }
+  #cmp-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .cmp-sel { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .cmp-sel select { width: 100%; }
+  .cmp-sel .vs { color: var(--text-dim); font-size: 12px; }
+  #cmp-canvas { width: 100%; height: 210px; display: block; border-radius: 10px; background: rgba(0,0,0,0.35); margin-bottom: 10px; }
+  #cmp-res { font-size: 13px; line-height: 1.55; color: #c3cce4; }
+  #cmp-res b { color: var(--text); }
+  #cmp-res .stat-v b { color: var(--accent); }
+
+  /* ---- Panel "¿Qué hay después?" ---- */
+  #mas-alla {
+    position: fixed; top: 70px; right: 16px; z-index: 13;
+    width: 380px; max-width: calc(100vw - 32px); max-height: calc(100vh - 200px); overflow-y: auto;
+    padding: 18px 20px; transform: translateX(420px); opacity: 0; transition: transform 0.35s ease, opacity 0.35s ease;
+  }
+  #mas-alla.visible { transform: translateX(0); opacity: 1; }
+  #mas-alla h2 { font-size: 19px; margin-bottom: 4px; }
+  #ma-intro { font-size: 12.5px; color: var(--text-dim); margin-bottom: 10px; line-height: 1.5; }
+  .ma-sec { padding: 9px 0; border-top: 1px solid rgba(130,160,255,0.1); }
+  .ma-sec h4 { font-size: 13.5px; margin-bottom: 3px; }
+  .ma-sec p { font-size: 12.5px; line-height: 1.55; color: #c3cce4; }
+  .nivel { font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; border-radius: 20px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; border: 1px solid; }
+  .nivel.ok { color: var(--ok); border-color: rgba(126,226,168,0.5); }
+  .nivel.prob { color: var(--prob); border-color: rgba(255,211,110,0.5); }
+  .nivel.esp { color: var(--esp); border-color: rgba(215,163,255,0.5); }
+
+  /* ---- Tooltip ---- */
+  #tooltip { position: fixed; z-index: 20; pointer-events: none; display: none; padding: 8px 12px; font-size: 12px; line-height: 1.5; max-width: 260px; font-variant-numeric: tabular-nums; }
+  #tooltip b { color: var(--accent); font-size: 13px; }
+
+  /* ---- Etiquetas 3D ---- */
+  .lblw { pointer-events: none; }
+  .lbl {
+    position: relative; display: block; font-size: 11.5px; color: #ccd5ee; cursor: pointer; user-select: none;
+    text-shadow: 0 0 5px #000, 0 0 10px #000; white-space: nowrap; pointer-events: auto;
+  }
+  .lbl:hover { color: #fff; }
+  .lbl.tenue { font-size: 10.5px; color: #6d78a0; font-style: italic; }
+  .lbl.anillo { font-size: 10px; color: #56618a; }
+  .lbl.voy1 { color: var(--v1); font-weight: 600; }
+  .lbl.voy2 { color: var(--v2); font-weight: 600; }
+  .lbl.helio { color: var(--helio); }
+  .lbl.aqui { color: #ff9ad5; font-weight: 600; }
+  .lbl.gal { color: #c9b8ff; }
+  .lbl.lejos { color: #ffb38a; }
+  .lbl.fantasma { color: #ffe39a; font-style: italic; }
+
+  #pista { position: fixed; bottom: 150px; left: 50%; transform: translateX(-50%); z-index: 8; padding: 9px 18px; font-size: 12.5px; color: var(--text-dim); transition: opacity 1.2s; white-space: nowrap; }
+  #load-error { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; text-align: center; background: var(--bg); color: var(--text-dim); padding: 30px; line-height: 1.7; }
+
+  @media (max-width: 1250px) { #curiosidad { width: 290px; } }
+  @media (max-width: 900px) {
+    #info, #mas-alla { top: auto; bottom: 120px; max-height: 46vh; }
+  }
+  @media (max-width: 720px) {
+    #hud { width: auto; right: 16px; padding: 10px 14px; }
+    #mano { display: none; }
+    #vista-ancho { font-size: 17px; }
+    #identidad { display: none; }
+    #modos { padding-right: 64px; }
+    #curiosidad { left: 12px; right: 12px; width: auto; max-width: none; bottom: 122px; padding: 10px 13px; font-size: 12.5px; }
+    #cur-texto { min-height: 0; }
+    .parada { width: 22px; height: 22px; font-size: 12px; line-height: 20px; }
+    .tick { display: none; }
+    #regla { padding: 8px 10px; }
+    #pista { display: none; }
+    #info, #mas-alla { right: 12px; left: 12px; width: auto; max-width: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="scene-container"></div>
+
+<div id="identidad">
+  <div id="redes">
+    <a href="https://github.com/alanjlj2202" target="_blank" rel="noopener" aria-label="GitHub" title="GitHub">
+      <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+    <a href="https://www.linkedin.com/in/alan-jesús-lópez-jacinto-66a699253" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z"/></svg>
+    </a>
+  </div>
+  <div id="firma">Alan JLJ · Fable 5</div>
+</div>
+
+<header id="hud" class="panel">
+  <div id="sel-idioma">
+    <button id="btn-en" class="activo" title="English">EN</button>
+    <button id="btn-es" title="Español">ES</button>
+  </div>
+  <nav id="modos">
+    <a id="lnk-voyager" href="index.html">🚀 Voyager</a>
+    <a id="lnk-universo" href="universo.html" class="activo">🌌 Universe</a>
+  </nav>
+  <h1 id="titulo">The Universe at Scale<span class="sub">From Earth to the edge of the observable universe · real distances</span></h1>
+  <div id="region"></div>
+  <div id="vista-etq">Field of view</div>
+  <div id="vista-ancho">—</div>
+  <div id="vista-pot"></div>
+  <div id="mano"></div>
+</header>
+
+<div id="curiosidad" class="panel">
+  <h3 id="cur-titulo"><span id="cur-titulo-txt">💡 Did you know?</span> <span class="flecha">▾</span></h3>
+  <div id="cur-cuerpo">
+    <div id="cur-texto"></div>
+    <div id="cur-nav">
+      <button id="cur-prev" aria-label="Previous">◀</button>
+      <span id="cur-num"></span>
+      <button id="cur-next" aria-label="Next">▶</button>
+    </div>
+  </div>
+</div>
+
+<aside id="info" class="panel">
+  <button class="cerrar" id="info-cerrar">✕</button>
+  <div id="info-tipo"></div>
+  <h2 id="info-nombre"></h2>
+  <div id="info-stats"></div>
+  <p id="info-dato"></p>
+  <p id="info-ctx"></p>
+  <div id="info-extra"></div>
+</aside>
+
+<aside id="mas-alla" class="panel">
+  <button class="cerrar" id="ma-cerrar">✕</button>
+  <div class="chip" id="ma-chip">Beyond the horizon</div>
+  <h2 id="ma-titulo">What lies beyond?</h2>
+  <p id="ma-intro"></p>
+  <div id="ma-secciones"></div>
+</aside>
+
+<div id="comparador" class="panel" role="dialog" aria-modal="true">
+  <button class="cerrar" id="cmp-cerrar">✕</button>
+  <h2 id="cmp-titulo">⚖️ Compare</h2>
+  <div id="cmp-tabs">
+    <button id="tab-tam" class="activo">Size</button>
+    <button id="tab-dist">Distance</button>
+  </div>
+  <div class="cmp-sel">
+    <select id="cmp-a"></select>
+    <span class="vs" id="cmp-vs">vs</span>
+    <select id="cmp-b"></select>
+  </div>
+  <canvas id="cmp-canvas"></canvas>
+  <div id="cmp-res"></div>
+</div>
+
+<nav id="regla" class="panel">
+  <div id="regla-pista">
+    <div id="regla-linea"></div>
+    <div id="regla-cursor"></div>
+  </div>
+  <div id="regla-fila">
+    <span id="regla-nombre"></span>
+    <button id="btn-tour">▶ Tour</button>
+    <button id="btn-comparar">⚖️ Compare</button>
+  </div>
+</nav>
+
+<div id="tooltip" class="panel"></div>
+<div id="pista" class="panel">🖱️ Scroll (or pinch) to zoom across 21 powers of ten · drag to rotate · click anything</div>
+
+<div id="load-error">
+  <div>
+    <h2 id="err-titulo">Could not load the 3D library</h2>
+    <p id="err-texto">This app needs an internet connection to download Three.js from the CDN.<br>Check your connection and reload the page.</p>
+  </div>
+</div>
+
+<script>
+  setTimeout(function () { if (!window.__app) document.getElementById('load-error').style.display = 'flex'; }, 8000);
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+/* ============================================================
+   1. CONSTANTES Y UTILIDADES
+   Todo el universo se guarda en METROS (doble precisión de JS) y
+   se proyecta a la GPU con un "origen flotante": cada cuadro se
+   resta el punto de enfoque y se divide entre la escala actual.
+   Así caben 21 órdenes de magnitud sin perder precisión.
+   ============================================================ */
+const AU = 1.495978707e11;          // m
+const LY = 9.4607304725808e15;      // m
+const C_LUZ = 299792458;            // m/s
+const R_SOL = 6.957e8;              // m
+const R_TIERRA = 6.371e6;           // m
+const DEG = Math.PI / 180;
+const EPS = 23.4392911 * DEG;       // oblicuidad de la eclíptica
+const J2000 = 2451545.0;
+const JD_HOY = Date.now() / 86400000 + 2440587.5;
+const ANIO_HOY = new Date().getFullYear();
+const V_VOYAGER = 17000;            // m/s (Voyager 1, heliocéntrica)
+const BALON = 0.22;                 // m: balón de fútbol
+const FACTOR_BALON = BALON / (2 * R_SOL);
+
+const D_CAM = 10;                   // distancia cámara-enfoque (unidades de escena)
+const FOV = 50;
+const K_VISTA = 2 * D_CAM * Math.tan(FOV / 2 * DEG);   // altura visible (unidades) a distancia D_CAM
+const Z_MIN = 7.05, Z_MAX = 28.0;   // log10 de la altura visible en metros
+const LIM_DIST = 40000;             // unidades: más lejos que esto no se dibuja
+
+const $ = (id) => document.getElementById(id);
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+const ETQ_SUELTAS = [];   // etiquetas sueltas (comparación) que hay que retraducir
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const suave = (a, b, x) => { if (b <= a) return x >= a ? 1 : 0; const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const ventana = (z, v) => suave(v[0], v[1], z) * (1 - suave(v[2], v[3], z));
+const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+
+// Generador pseudoaleatorio con semilla: el universo es el mismo en cada visita
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const rnd = mulberry32(20261108);
+const gauss = () => { let u = 0, v = 0; while (u === 0) u = rnd(); v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+
+/* ============================================================
+   1b. IDIOMA (en / es) — se recuerda entre los dos modos
+   ============================================================ */
+let idioma = 'en';
+try { const q = new URLSearchParams(location.search).get('lang'); if (q === 'es' || q === 'en') idioma = q; else { const g = localStorage.getItem('voyager-lang'); if (g === 'es' || g === 'en') idioma = g; } } catch (e) { /* sin almacenamiento */ }
+const LOCALES = { en: 'en-US', es: 'es-MX' };
+const fmt = (n, d = 0) => n.toLocaleString(LOCALES[idioma], { maximumFractionDigits: d, minimumFractionDigits: d });
+const fmtMax = (n, d = 0) => n.toLocaleString(LOCALES[idioma], { maximumFractionDigits: d });
+const t = (k) => TXT[idioma][k];
+const tx = (campo) => (campo && typeof campo === 'object') ? campo[idioma] : campo;
+
+const TXT = {
+  en: {
+    docTitle: 'Universe at Scale · Voyager Tracker',
+    titulo: 'The Universe at Scale', sub: 'From Earth to the edge of the observable universe · real distances',
+    modoUni: '🌌 Universe', region: 'You are exploring', vistaDe: 'Field of view',
+    mano: (x) => `🖐 <b>The universe in your hands:</b> if this view were your hand (~20 cm), every centimeter would span <b>${x}</b>.`,
+    curTitulo: '💡 Did you know?', tour: '▶ Tour', tourStop: '⏸ Stop tour', comparar: '⚖️ Compare',
+    pista: '🖱️ Scroll (or pinch) to zoom across 21 powers of ten · drag to rotate · click anything',
+    errTitulo: 'Could not load the 3D library', errTexto: 'This app needs an internet connection to download Three.js from the CDN.<br>Check your connection and reload the page.',
+    u: { millonKm: 'million km', al: 'light-years', mal: 'million light-years', gal: 'billion light-years', dias: 'days', anios: 'years', deAnios: 'years',
+         millon: 'million', milmillones: 'billion', billon: 'trillion' },
+    kDistTierra: 'Distance from Earth', kDistHoy: 'Distance today (space expanded)', kTiempoLuz: 'Light-time from Earth', kLuzViaje: 'Its light traveled',
+    kDiam: 'Diameter', kRadio: 'Radius', kVoyager: 'At Voyager 1 speed (17 km/s)', kTamSol: 'Size vs. the Sun', kTamTierra: 'Size vs. Earth',
+    xSol: (n) => `${n}× the Sun`, xTierra: (n) => `${n}× Earth`,
+    ctxTitulo: '🕰️ When the light you see from here departed, ',
+    ctxAnio: (a) => `it was around the year ${a}.`, ctxAC: (a) => `it was around ${a} BC.`,
+    ctx: ['Homo sapiens already walked the Earth, but no one had invented farming yet.',
+          'our species did not exist yet; early human ancestors were making the first stone tools.',
+          'the dinosaurs were already gone and mammals were spreading across the planet.',
+          'dinosaurs (or their ancestors) ruled the Earth.',
+          'complex life was flourishing in the seas and starting to colonize the land.',
+          'life on Earth was only microscopic.',
+          'the Earth was being born: a molten world without life.',
+          'neither the Sun nor the Earth existed yet.'],
+    btnVolar: '🎯 Fly here', btnComparar: '⚖️ Compare its size', btnDist: '📏 Measure distances from here',
+    ttDist: 'From Earth',
+    cmpTitulo: '⚖️ Compare', tabTam: '📐 Size', tabDist: '📏 Distance', vs: 'vs', desde: 'from', hasta: 'to',
+    cmpMayor: (b, n, a) => `<b>${b}</b> is <b>${n}×</b> wider than <b>${a}</b>.`,
+    cmpIgual: (a, b) => `<b>${a}</b> and <b>${b}</b> are about the same size.`,
+    cmpCaben: (n, a, b) => `About <b>${n}</b> ${a} would fit inside ${b}.`,
+    cmpBalon: (a, x, b) => `⚽ If ${a} were a soccer ball (22 cm), ${b} would measure <b>${x}</b>.`,
+    cmpInvis: 'too small to see at this scale',
+    dLuz: '💡 Light', dVoy: '🛰️ Voyager 1 (17 km/s)', dAvion: '✈️ Airliner (900 km/h)', dAuto: '🚗 Car (100 km/h)', dPie: '🚶 Walking (5 km/h)',
+    dBalon: (x) => `⚽ If the Sun were a soccer ball (22 cm), this distance would be <b>${x}</b>.`,
+    dTotal: 'Distance', dNota: 'Approximate straight-line distance between both objects, computed from their 3D positions.',
+    maChip: 'Beyond the horizon', maTitulo: 'What lies beyond?',
+    maIntro: 'The sphere you see is not the universe: it is the part of it whose light has had time to reach us. Here is what science can say about the rest — and how sure it is.',
+    nivel: { ok: 'Established', prob: 'Likely', esp: 'Speculative' },
+    fantasma: '☀️ The Sun, to scale', anilloT: 'Earth’s orbit (1 AU), for scale', anilloJ: 'Jupiter’s orbit, for scale',
+    tipoPlaneta: 'Planet', tipoLuna: 'Natural satellite', tipoEstrella: 'Star', tipoEnana: 'Brown dwarf', tipoSonda: 'Interstellar probe · NASA',
+    tipoGalaxia: 'Galaxy', tipoCumulo: 'Galaxy cluster', tipoCumuloEst: 'Star cluster', tipoNebulosa: 'Nebula', tipoAH: 'Supermassive black hole',
+    tipoQuasar: 'Quasar', tipoEstructura: 'Large-scale structure', tipoVacio: 'Cosmic void', tipoFrontera: 'Boundary', tipoHorizonte: 'Cosmic horizon',
+    tipoAqui: 'You', tipoSuper: 'Supercluster', tipoBrazo: 'Spiral arm',
+  },
+  es: {
+    docTitle: 'Universo a escala · Rastreador Voyager',
+    titulo: 'El Universo a escala', sub: 'De la Tierra al borde del universo observable · distancias reales',
+    modoUni: '🌌 Universo', region: 'Estás explorando', vistaDe: 'Campo de visión',
+    mano: (x) => `🖐 <b>El universo en tus manos:</b> si esta vista fuera tu mano (~20 cm), cada centímetro abarcaría <b>${x}</b>.`,
+    curTitulo: '💡 ¿Sabías que…?', tour: '▶ Recorrido', tourStop: '⏸ Detener', comparar: '⚖️ Comparar',
+    pista: '🖱️ Rueda (o pellizca) para viajar por 21 potencias de diez · arrastra para girar · haz clic en lo que sea',
+    errTitulo: 'No se pudo cargar la librería 3D', errTexto: 'Esta aplicación necesita conexión a internet para descargar Three.js desde el CDN.<br>Verifica tu conexión y recarga la página.',
+    u: { millonKm: 'millones de km', al: 'años-luz', mal: 'millones de años-luz', gal: 'mil millones de años-luz', dias: 'días', anios: 'años', deAnios: 'de años',
+         millon: 'millones', milmillones: 'mil millones', billon: 'billones' },
+    kDistTierra: 'Distancia a la Tierra', kDistHoy: 'Distancia hoy (el espacio se expandió)', kTiempoLuz: 'Tiempo-luz desde la Tierra', kLuzViaje: 'Su luz viajó',
+    kDiam: 'Diámetro', kRadio: 'Radio', kVoyager: 'A la velocidad del Voyager 1', kTamSol: 'Tamaño vs. el Sol', kTamTierra: 'Tamaño vs. la Tierra',
+    xSol: (n) => `${n}× el Sol`, xTierra: (n) => `${n}× la Tierra`,
+    ctxTitulo: '🕰️ Cuando salió la luz que ves desde aquí, ',
+    ctxAnio: (a) => `era aproximadamente el año ${a}.`, ctxAC: (a) => `era aproximadamente el año ${a} a. C.`,
+    ctx: ['el Homo sapiens ya caminaba por la Tierra, pero nadie había inventado la agricultura.',
+          'nuestra especie aún no existía; los primeros ancestros humanos fabricaban sus primeras herramientas de piedra.',
+          'los dinosaurios ya habían desaparecido y los mamíferos se extendían por el planeta.',
+          'los dinosaurios (o sus ancestros) dominaban la Tierra.',
+          'la vida compleja florecía en los mares y empezaba a conquistar la tierra firme.',
+          'la vida en la Tierra era solo microscópica.',
+          'la Tierra estaba naciendo: un mundo fundido y sin vida.',
+          'ni el Sol ni la Tierra existían todavía.'],
+    btnVolar: '🎯 Volar hasta aquí', btnComparar: '⚖️ Comparar su tamaño', btnDist: '📏 Medir distancias desde aquí',
+    ttDist: 'Desde la Tierra',
+    cmpTitulo: '⚖️ Comparar', tabTam: '📐 Tamaño', tabDist: '📏 Distancia', vs: 'vs', desde: 'desde', hasta: 'hasta',
+    cmpMayor: (b, n, a) => `<b>${b}</b> es <b>${n} veces</b> más ancho que <b>${a}</b>.`,
+    cmpIgual: (a, b) => `<b>${a}</b> y <b>${b}</b> miden casi lo mismo.`,
+    cmpCaben: (n, a, b) => `Dentro de ${b} cabrían unos <b>${n}</b> ${a}.`,
+    cmpBalon: (a, x, b) => `⚽ Si ${a} fuera un balón de fútbol (22 cm), ${b} mediría <b>${x}</b>.`,
+    cmpInvis: 'demasiado pequeño para verse a esta escala',
+    dLuz: '💡 La luz', dVoy: '🛰️ Voyager 1 (17 km/s)', dAvion: '✈️ Avión comercial (900 km/h)', dAuto: '🚗 Auto (100 km/h)', dPie: '🚶 Caminando (5 km/h)',
+    dBalon: (x) => `⚽ Si el Sol fuera un balón de fútbol (22 cm), esta distancia sería de <b>${x}</b>.`,
+    dTotal: 'Distancia', dNota: 'Distancia aproximada en línea recta entre ambos objetos, calculada con sus posiciones 3D.',
+    maChip: 'Más allá del horizonte', maTitulo: '¿Qué hay después?',
+    maIntro: 'La esfera que ves no es el universo: es la parte cuya luz ha tenido tiempo de llegarnos. Esto es lo que la ciencia puede decir del resto — y qué tan segura está.',
+    nivel: { ok: 'Comprobado', prob: 'Probable', esp: 'Especulativo' },
+    fantasma: '☀️ El Sol, a escala', anilloT: 'Órbita de la Tierra (1 AU), como referencia', anilloJ: 'Órbita de Júpiter, como referencia',
+    tipoPlaneta: 'Planeta', tipoLuna: 'Satélite natural', tipoEstrella: 'Estrella', tipoEnana: 'Enana marrón', tipoSonda: 'Sonda interestelar · NASA',
+    tipoGalaxia: 'Galaxia', tipoCumulo: 'Cúmulo de galaxias', tipoCumuloEst: 'Cúmulo estelar', tipoNebulosa: 'Nebulosa', tipoAH: 'Agujero negro supermasivo',
+    tipoQuasar: 'Cuásar', tipoEstructura: 'Estructura a gran escala', tipoVacio: 'Vacío cósmico', tipoFrontera: 'Frontera', tipoHorizonte: 'Horizonte cósmico',
+    tipoAqui: 'Tú', tipoSuper: 'Supercúmulo', tipoBrazo: 'Brazo espiral',
+  },
+};
+
+/* ---- Formato de cantidades astronómicas ---- */
+function palabra(n, clave) {
+  const U = t('u');
+  if (idioma === 'es' && Math.abs(n - 1) < 0.05) return clave === 'millon' ? 'millón' : clave === 'billon' ? 'billón' : U[clave];
+  return U[clave];
+}
+function cifra(x) { return fmtMax(x, x < 10 ? 2 : x < 100 ? 1 : 0); }
+function sci(n) { const e = Math.floor(Math.log10(n)); return `${fmtMax(n / Math.pow(10, e), 1)} × 10<sup>${e}</sup>`; }
+function fmtGrande(n) {
+  const a = Math.abs(n);
+  if (a < 1e4) return cifra(n);
+  if (a < 1e6) return fmt(n, 0);
+  if (a < 1e9) return `${cifra(n / 1e6)} ${palabra(n / 1e6, 'millon')}`;
+  if (a < 1e12) return `${cifra(n / 1e9)} ${palabra(n / 1e9, 'milmillones')}`;
+  if (a < 1e15) return `${cifra(n / 1e12)} ${palabra(n / 1e12, 'billon')}`;
+  return sci(n);
+}
+function fmtDist(m) {
+  const U = t('u');
+  if (m < 1) return `${fmtMax(m * 100, 1)} cm`;
+  if (m < 1e3) return `${fmtMax(m, 0)} m`;
+  if (m < 1e9) { const km = m / 1e3; return `${km < 10 ? fmtMax(km, 2) : fmt(km, 0)} km`; }
+  if (m < 1.5e10) return `${fmtMax(m / 1e9, 2)} ${U.millonKm}`;
+  if (m < 0.1 * LY) { const au = m / AU; return `${cifra(au)} AU`; }
+  const ly = m / LY;
+  if (ly < 1e6) return `${ly < 1000 ? cifra(ly) : fmt(ly, 0)} ${U.al}`;
+  if (ly < 1e9) return `${cifra(ly / 1e6)} ${U.mal}`;
+  return `${fmtMax(ly / 1e9, 1)} ${U.gal}`;
+}
+function fmtDistLarga(m) {
+  const p = fmtDist(m);
+  if (m >= 1.5e10 && m < 1e30) return `${p}<br><span style="color:var(--text-dim)">${fmtGrande(m / 1000)} km</span>`;
+  return p;
+}
+function fmtAnios(y) {
+  const U = t('u');
+  if (y < 100) return `${fmtMax(y, 1)} ${U.anios}`;
+  if (y < 1e6) return `${fmt(y, 0)} ${U.anios}`;
+  return `${fmtGrande(y)} ${U.deAnios}`;
+}
+function fmtTiempo(s) {
+  if (s < 1) return `${fmtMax(s * 1000, 0)} ms`;
+  if (s < 60) return `${fmtMax(s, s < 10 ? 2 : 1)} s`;
+  if (s < 3600) return `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`;
+  if (s < 172800) return `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min`;
+  const dias = s / 86400;
+  if (dias < 730) return `${fmt(dias, 0)} ${t('u').dias}`;
+  return fmtAnios(dias / 365.25);
+}
+// Longitudes "humanas" para las analogías del balón
+function fmtHumana(m) {
+  if (m < 1e-9) return `${sci(m)} m`;
+  if (m < 1e-6) return `${fmtMax(m * 1e9, 1)} nm`;
+  if (m < 1e-3) return `${fmtMax(m * 1e6, 1)} µm`;
+  if (m < 0.01) return `${fmtMax(m * 1000, 1)} mm`;
+  if (m < 1) return `${fmtMax(m * 100, 1)} cm`;
+  if (m < 1000) return `${fmtMax(m, 1)} m`;
+  if (m < 1e9) return `${fmt(m / 1000, 0)} km`;
+  return fmtDist(m);
+}
+function contextoLuz(anios) {
+  if (!(anios >= 1)) return '';
+  const anio = ANIO_HOY - anios;
+  let txt;
+  if (anios < 2026) txt = t('ctxAnio')(Math.round(anio));
+  else if (anios < 12000) txt = t('ctxAC')(fmt(Math.round(-anio + 1), 0));
+  else {
+    const L = [3e5, 2.6e6, 66e6, 252e6, 541e6, 3.8e9, 4.6e9, Infinity];
+    txt = t('ctx')[L.findIndex(x => anios < x)];
+  }
+  return t('ctxTitulo') + txt;
+}
+
+/* ============================================================
+   2. SISTEMAS DE COORDENADAS
+   Escena: Y hacia el polo norte de la eclíptica (como en el modo
+   Voyager). Las estrellas y galaxias se ubican con su ascensión
+   recta, declinación y distancia reales.
+   ============================================================ */
+const eclAEscena = (x, y, z) => V3(x, z, -y);
+function eqAEscena(x, y, z) {
+  const ye = y * Math.cos(EPS) + z * Math.sin(EPS);
+  const ze = -y * Math.sin(EPS) + z * Math.cos(EPS);
+  return eclAEscena(x, ye, ze);
+}
+function dirRaDec(ra, dec) {
+  const [h, m = 0, s = 0] = ra.split(' ').map(Number);
+  const neg = dec.trim().startsWith('-') || dec.trim().startsWith('−');
+  const [d, dm = 0, ds = 0] = dec.replace(/[+\-−]/, '').split(' ').map(Number);
+  const a = (h + m / 60 + s / 3600) * 15 * DEG;
+  const de = (neg ? -1 : 1) * (d + dm / 60 + ds / 3600) * DEG;
+  return eqAEscena(Math.cos(de) * Math.cos(a), Math.cos(de) * Math.sin(a), Math.sin(de));
+}
+const posRaDec = (ra, dec, distM) => dirRaDec(ra, dec).multiplyScalar(distM);
+
+// Marco galáctico: polo norte galáctico y dirección al centro (J2000)
+const GAL_Y = dirRaDec('12 51 26.3', '+27 07 42').normalize();
+const _gc = dirRaDec('17 45 37.2', '-28 56 10');
+const DIR_CENTRO = _gc.sub(GAL_Y.clone().multiplyScalar(_gc.dot(GAL_Y))).normalize();
+const GAL_X = DIR_CENTRO.clone().negate();                 // del centro hacia el Sol
+const GAL_Z = V3().crossVectors(GAL_X, GAL_Y);
+const R_SOL_GAL = 26670;                                   // años-luz (GRAVITY 2019)
+const CENTRO_GAL = DIR_CENTRO.clone().multiplyScalar(R_SOL_GAL * LY);
+const QUAT_GAL = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(GAL_X, GAL_Y, GAL_Z));
+const galAEscena = (lx, ly, lz) => CENTRO_GAL.clone()
+  .add(GAL_X.clone().multiplyScalar(lx * LY)).add(GAL_Y.clone().multiplyScalar(ly * LY)).add(GAL_Z.clone().multiplyScalar(lz * LY));
+
+/* ============================================================
+   3. SISTEMA SOLAR (mecánica kepleriana, igual que el modo Voyager)
+   ============================================================ */
+const PLANETAS = [
+  { id: 'mercurio', nombre: { en: 'Mercury', es: 'Mercurio' }, color: 0xb8a89a, radioKm: 2440,
+    a: 0.38709927, e: 0.20563593, i: 7.00497902, L0: 252.25032350, varpi: 77.45779628, Omega: 48.33076593,
+    dato: { en: 'The smallest and fastest planet: one lap around the Sun every 88 days, at nearly 48 km/s.', es: 'El planeta más pequeño y veloz: una vuelta al Sol cada 88 días, a casi 48 km/s.' } },
+  { id: 'venus', nombre: { en: 'Venus', es: 'Venus' }, color: 0xe6c87a, radioKm: 6052,
+    a: 0.72333566, e: 0.00677672, i: 3.39467605, L0: 181.97909950, varpi: 131.60246718, Omega: 76.67984255,
+    dato: { en: 'The hottest planet (464 °C). It spins backwards so slowly that its day (243 Earth days) is longer than its year (225 days).', es: 'El planeta más caliente (464 °C). Gira al revés y tan lento que su día (243 días terrestres) dura más que su año (225 días).' } },
+  { id: 'tierra', nombre: { en: 'Earth', es: 'Tierra' }, color: 0x4f87d4, radioKm: 6371,
+    a: 1.00000261, e: 0.01671123, i: 0.0, L0: 100.46457166, varpi: 102.93768193, Omega: 0.0,
+    dato: { en: 'Home. Its orientation here is real: the lit side is the half of the planet having daytime right now, and the Moon is shown at its true position today.', es: 'Nuestro hogar. Su orientación aquí es real: el lado iluminado es la mitad del planeta donde ahora mismo es de día, y la Luna aparece en su posición real de hoy.' } },
+  { id: 'marte', nombre: { en: 'Mars', es: 'Marte' }, color: 0xd1693f, radioKm: 3390,
+    a: 1.52371034, e: 0.09339410, i: 1.84969142, L0: -4.55343205, varpi: -23.94362959, Omega: 49.55953891,
+    dato: { en: 'Home of Olympus Mons, a volcano about 22 km tall — two and a half Everests.', es: 'Hogar del Olympus Mons, un volcán de unos 22 km de altura: dos Everest y medio.' } },
+  { id: 'jupiter', nombre: { en: 'Jupiter', es: 'Júpiter' }, color: 0xd8b48a, radioKm: 69911,
+    a: 5.20288700, e: 0.04838624, i: 1.30439695, L0: 34.39644051, varpi: 14.72847983, Omega: 100.47390909,
+    dato: { en: 'More than twice as massive as all the other planets combined. About 1,300 Earths would fit inside it.', es: 'Tiene más del doble de masa que todos los demás planetas juntos. Dentro cabrían unas 1,300 Tierras.' } },
+  { id: 'saturno', nombre: { en: 'Saturn', es: 'Saturno' }, color: 0xe0cf9f, radioKm: 58232,
+    a: 9.53667594, e: 0.05386179, i: 2.48599187, L0: 49.95424423, varpi: 92.59887831, Omega: 113.66242448,
+    dato: { en: 'Its rings span 280,000 km but are only about 10 m thick: proportionally far thinner than a sheet of paper.', es: 'Sus anillos miden 280,000 km de ancho pero solo unos 10 m de grosor: en proporción, mucho más delgados que una hoja de papel.' } },
+  { id: 'urano', nombre: { en: 'Uranus', es: 'Urano' }, color: 0x9ad8d8, radioKm: 25362,
+    a: 19.18916464, e: 0.04725744, i: 0.77263783, L0: 313.23810451, varpi: 170.95427630, Omega: 74.01692503,
+    dato: { en: 'It rolls around the Sun on its side (axis tilted 98°): each pole gets 42 years of daylight followed by 42 years of night.', es: 'Rueda alrededor del Sol "acostado" (eje a 98°): cada polo tiene 42 años de día seguidos de 42 años de noche.' } },
+  { id: 'neptuno', nombre: { en: 'Neptune', es: 'Neptuno' }, color: 0x5a7bd8, radioKm: 24622,
+    a: 30.06992276, e: 0.00859048, i: 1.77004347, L0: -55.12002969, varpi: 44.96476227, Omega: 131.78422574,
+    dato: { en: 'Discovered in 1846 with pen and paper (predicted from Uranus’s wobble) before anyone saw it. It completed its first orbit since discovery only in 2011.', es: 'Descubierto en 1846 con lápiz y papel (predicho por las perturbaciones de Urano) antes de que alguien lo viera. Completó su primera órbita desde entonces hasta 2011.' } },
+];
+
+function resolverKepler(M, e) { let E = M; for (let k = 0; k < 12; k++) { const d = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E)); E -= d; if (Math.abs(d) < 1e-9) break; } return E; }
+function posPlanetaAU(p, jd) {
+  const n = 360 / (Math.pow(p.a, 1.5) * 365.25);
+  const M = ((p.L0 + n * (jd - J2000) - p.varpi) % 360) * DEG;
+  const E = resolverKepler(M, p.e);
+  const xp = p.a * (Math.cos(E) - p.e), yp = p.a * Math.sqrt(1 - p.e * p.e) * Math.sin(E);
+  const w = (p.varpi - p.Omega) * DEG, O = p.Omega * DEG, inc = p.i * DEG;
+  const cw = Math.cos(w), sw = Math.sin(w), cO = Math.cos(O), sO = Math.sin(O), ci = Math.cos(inc), si = Math.sin(inc);
+  return eclAEscena(
+    (cw * cO - sw * sO * ci) * xp + (-sw * cO - cw * sO * ci) * yp,
+    (cw * sO + sw * cO * ci) * xp + (-sw * sO + cw * cO * ci) * yp,
+    (sw * si) * xp + (cw * si) * yp);
+}
+// Luna: fórmula de baja precisión del Astronomical Almanac (geocéntrica, eclíptica)
+function posLunaGeo(jd) {
+  const T = (jd - J2000) / 36525, s = (d) => Math.sin(d * DEG), c = (d) => Math.cos(d * DEG);
+  const lam = 218.32 + 481267.881 * T + 6.29 * s(135.0 + 477198.87 * T) - 1.27 * s(259.3 - 413335.36 * T) + 0.66 * s(235.7 + 890534.22 * T)
+            + 0.21 * s(269.9 + 954397.74 * T) - 0.19 * s(357.5 + 35999.05 * T) - 0.11 * s(186.5 + 966404.03 * T);
+  const bet = 5.13 * s(93.3 + 483202.02 * T) + 0.28 * s(228.2 + 960400.89 * T) - 0.28 * s(318.3 + 6003.15 * T) - 0.17 * s(217.6 - 407332.21 * T);
+  const par = 0.9508 + 0.0518 * c(135.0 + 477198.87 * T) + 0.0095 * c(259.3 - 413335.36 * T) + 0.0078 * c(235.7 + 890534.22 * T) + 0.0028 * c(269.9 + 954397.74 * T);
+  const r = 6378.14e3 / Math.sin(par * DEG);
+  return eclAEscena(r * c(bet) * c(lam), r * c(bet) * s(lam), r * s(bet));
+}
+const POS_TIERRA = posPlanetaAU(PLANETAS[2], JD_HOY).multiplyScalar(AU);
+const POS_LUNA = POS_TIERRA.clone().add(posLunaGeo(JD_HOY));
+
+// Voyagers: mismo modelo que el modo Voyager (rumbo asintótico + velocidad)
+const VOYAGERS = [
+  { id: 'voyager1', nombre: 'Voyager 1', color: 0xffc864, css: 'voy1', dist2026: 169.2, vel: 17.0, lon: 255, lat: 35,
+    dato: { en: 'The most distant human-made object. Around November 18, 2026 it becomes the first spacecraft ever to be one light-day from Earth: a radio command takes a full day to reach it. In ~40,000 years it will pass 1.6 light-years from the star Gliese 445.',
+            es: 'El objeto humano más lejano. Alrededor del 18 de noviembre de 2026 se convierte en la primera nave a un día-luz de la Tierra: un comando de radio tarda un día entero en alcanzarla. En ~40,000 años pasará a 1.6 años-luz de la estrella Gliese 445.' } },
+  { id: 'voyager2', nombre: 'Voyager 2', color: 0x64d2ff, css: 'voy2', dist2026: 141.0, vel: 15.4, lon: 290, lat: -48,
+    dato: { en: 'The only spacecraft to visit Uranus and Neptune. It will reach one light-day from Earth around 2035, and in ~40,000 years it will pass 1.7 light-years from Ross 248.',
+            es: 'La única nave que ha visitado Urano y Neptuno. Llegará a un día-luz de la Tierra hacia 2035 y en ~40,000 años pasará a 1.7 años-luz de Ross 248.' } },
+];
+const JD_2026 = 2440587.5 + Date.UTC(2026, 0, 1) / 86400000;
+for (const v of VOYAGERS) {
+  const d = (v.dist2026 + v.vel * 31557600 / AU * 1000 * (JD_HOY - JD_2026) / 365.25) * AU;
+  v.pos = eclAEscena(Math.cos(v.lat * DEG) * Math.cos(v.lon * DEG), Math.cos(v.lat * DEG) * Math.sin(v.lon * DEG), Math.sin(v.lat * DEG)).multiplyScalar(d);
+}
+
+/* ============================================================
+   4. ESCENA THREE.JS
+   ============================================================ */
+const contenedor = $('scene-container');
+const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+contenedor.appendChild(renderer.domElement);
+const cssRenderer = new CSS2DRenderer();
+cssRenderer.setSize(window.innerWidth, window.innerHeight);
+Object.assign(cssRenderer.domElement.style, { position: 'fixed', top: '0', pointerEvents: 'none' });
+contenedor.appendChild(cssRenderer.domElement);
+
+const escena = new THREE.Scene();
+const camara = new THREE.PerspectiveCamera(FOV, window.innerWidth / window.innerHeight, 0.0005, 2e6);
+camara.position.set(4, 5, 7.5).setLength(D_CAM);
+const controles = new OrbitControls(camara, renderer.domElement);
+controles.enableDamping = true; controles.dampingFactor = 0.07;
+controles.enableZoom = false; controles.enablePan = false; controles.rotateSpeed = 0.6;
+controles.autoRotateSpeed = 0.35;
+
+escena.add(new THREE.AmbientLight(0xffffff, 0.07));
+const luzSol = new THREE.PointLight(0xfff4e0, 3.0, 0, 0);
+escena.add(luzSol);
+
+/* ---- Texturas procedurales ---- */
+function lienzo(w, h, dibujar) { const c = document.createElement('canvas'); c.width = w; c.height = h; dibujar(c.getContext('2d'), w, h); const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; return tx; }
+const texPunto = lienzo(64, 64, (g) => { const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.28, 'rgba(255,255,255,0.85)'); r.addColorStop(0.5, 'rgba(255,255,255,0.22)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64); });
+const texBrillo = lienzo(128, 128, (g) => { const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.2, 'rgba(255,230,190,0.45)'); r.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = r; g.fillRect(0, 0, 128, 128); });
+const texAnilloSel = lienzo(128, 128, (g) => { g.strokeStyle = 'rgba(160,200,255,0.95)'; g.lineWidth = 5; g.beginPath(); g.arc(64, 64, 54, 0, Math.PI * 2); g.stroke(); });
+const texAqui = lienzo(128, 128, (g) => { g.strokeStyle = 'rgba(255,154,213,1)'; g.lineWidth = 7; g.beginPath(); g.arc(64, 64, 46, 0, Math.PI * 2); g.stroke(); g.fillStyle = 'rgba(255,154,213,1)'; g.beginPath(); g.arc(64, 64, 12, 0, Math.PI * 2); g.fill(); });
+
+function texGalaxia(forma, semilla) {
+  const R = mulberry32(semilla);
+  return lienzo(256, 256, (g) => {
+    g.globalCompositeOperation = 'lighter';
+    const nucleo = g.createRadialGradient(128, 128, 0, 128, 128, forma === 'eliptica' ? 120 : 46);
+    nucleo.addColorStop(0, 'rgba(255,240,210,0.95)'); nucleo.addColorStop(0.35, 'rgba(255,215,160,0.45)'); nucleo.addColorStop(1, 'rgba(255,200,140,0)');
+    g.save();
+    if (forma === 'eliptica') { g.translate(128, 128); g.scale(1, 0.72); g.translate(-128, -128); }
+    g.fillStyle = nucleo; g.fillRect(0, 0, 256, 256); g.restore();
+    if (forma === 'espiral' || forma === 'barrada') {
+      if (forma === 'barrada') {
+        g.save(); g.translate(128, 128); g.rotate(0.45); g.scale(1, 0.28);
+        const b = g.createRadialGradient(0, 0, 0, 0, 0, 52); b.addColorStop(0, 'rgba(255,225,180,0.75)'); b.addColorStop(1, 'rgba(255,210,160,0)');
+        g.fillStyle = b; g.fillRect(-60, -60, 120, 120); g.restore();
+      }
+      const brazos = forma === 'barrada' ? 4 : 2, b = 0.24;
+      for (let k = 0; k < brazos; k++) {
+        for (let i = 0; i < 1400; i++) {
+          const th = R() * 3.6 * Math.PI, r = 14 * Math.exp(b * th) * (0.92 + R() * 0.16);
+          if (r > 122) continue;
+          const a = th + k * 2 * Math.PI / brazos + (R() - 0.5) * 0.35;
+          const x = 128 + r * Math.cos(a), y = 128 + r * Math.sin(a), s = 0.6 + R() * 1.8;
+          const rosa = R() < 0.06;
+          g.fillStyle = rosa ? 'rgba(255,140,190,0.55)' : `rgba(${170 + R() * 60 | 0},${195 + R() * 40 | 0},255,${0.18 + R() * 0.3})`;
+          g.beginPath(); g.arc(x, y, s, 0, Math.PI * 2); g.fill();
+        }
+      }
+      const halo = g.createRadialGradient(128, 128, 0, 128, 128, 126); halo.addColorStop(0, 'rgba(150,170,255,0.18)'); halo.addColorStop(1, 'rgba(150,170,255,0)');
+      g.fillStyle = halo; g.fillRect(0, 0, 256, 256);
+    } else if (forma === 'irregular') {
+      for (let i = 0; i < 40; i++) {
+        const x = 128 + gaussR(R) * 38, y = 128 + gaussR(R) * 26, s = 6 + R() * 22;
+        const r = g.createRadialGradient(x, y, 0, x, y, s); r.addColorStop(0, `rgba(185,205,255,${0.2 + R() * 0.25})`); r.addColorStop(1, 'rgba(185,205,255,0)');
+        g.fillStyle = r; g.fillRect(x - s, y - s, 2 * s, 2 * s);
+      }
+    }
+  });
+}
+function gaussR(R) { let u = 0; while (u === 0) u = R(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * R()); }
+const texCMB = lienzo(512, 256, (g) => {
+  g.fillStyle = '#5a2f2a'; g.fillRect(0, 0, 512, 256);
+  for (let i = 0; i < 2600; i++) {
+    const x = rnd() * 512, y = rnd() * 256, s = 3 + rnd() * 14, cal = rnd() < 0.5;
+    const r = g.createRadialGradient(x, y, 0, x, y, s);
+    r.addColorStop(0, cal ? 'rgba(255,170,70,0.35)' : 'rgba(60,110,230,0.35)'); r.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = r; g.fillRect(x - s, y - s, 2 * s, 2 * s);
+  }
+});
+const texJupiter = lienzo(256, 128, (g) => {
+  const bandas = ['#d9c3a0', '#c99c6c', '#e8d8bc', '#b98a5e', '#e2cfaf', '#c4956a', '#dcc6a4', '#a97c55', '#e6d6b8'];
+  for (let y = 0; y < 128; y++) { g.fillStyle = bandas[Math.floor((Math.sin(y * 0.19) * 0.5 + 0.5) * bandas.length * 0.999 + y / 40) % bandas.length]; g.fillRect(0, y, 256, 1); }
+  g.fillStyle = 'rgba(190,90,60,0.75)'; g.beginPath(); g.ellipse(170, 84, 14, 7, 0, 0, Math.PI * 2); g.fill();
+});
+
+// Texturas reales de la Tierra y la Luna (repositorio de three.js en jsDelivr). Si fallan, quedan colores lisos.
+const cargador = new THREE.TextureLoader(); cargador.setCrossOrigin('anonymous');
+function cargarTextura(url, mat) {
+  cargador.load(url, (tex) => { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4; mat.map = tex; mat.color.set(0xffffff); mat.needsUpdate = true; }, undefined, () => {});
+}
+const URL_TEX = 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/textures/planets/';
+
+/* ============================================================
+   5. CAPAS: cada una vive en un rango de zoom (log10 de metros)
+   [empieza a aparecer, totalmente visible, empieza a desaparecer, oculta]
+   ============================================================ */
+const CAPAS = {
+  tierraLuna: [6.5, 6.6, 9.9, 10.9],
+  planetas:   [6.5, 6.6, 14.0, 14.9],
+  orbitas:    [8.9, 9.8, 14.0, 14.9],
+  sol:        [6.5, 6.6, 20.0, 20.6],
+  helio:      [12.0, 12.8, 15.6, 16.6],
+  oort:       [14.2, 15.0, 17.2, 18.0],
+  cercanas:   [15.4, 16.2, 18.6, 19.4],
+  brillantes: [16.6, 17.4, 19.9, 20.7],
+  viaLactea:  [19.6, 20.4, 22.4, 23.2],
+  grupoLocal: [21.2, 22.0, 24.0, 24.9],
+  galCercanas:[22.6, 23.4, 25.2, 26.0],
+  web:        [23.6, 24.3, 25.9, 26.7],
+  universo:   [25.0, 25.8, 98, 99],
+  masAlla:    [27.2, 27.55, 98, 99],
+  aqui:       [20.0, 20.6, 98, 99],
+  fondo:      [0, 0, 20.6, 21.6],
+};
+
+/* ============================================================
+   6. OBJETOS DEL UNIVERSO (posición real en metros)
+   ============================================================ */
+const OBJ = [], POR_ID = {};
+const geoEsfera = new THREE.SphereGeometry(1, 64, 40);
+const geoPlano = new THREE.PlaneGeometry(2, 2);
+
+function crearObjeto(o) {
+  o.v = o.v || CAPAS[o.capa];
+  o.prioridad = o.prioridad ?? 5;
+  o.radio = o.radio || 0;
+  o.mats = [];
+  const g = new THREE.Group(); escena.add(g); o.g = g; g.visible = false;
+  const color = new THREE.Color(o.color ?? 0xffffff);
+
+  if (o.cuerpo === 'esfera') {
+    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.92, metalness: 0, transparent: true, map: o.mapa || null });
+    o.malla = new THREE.Mesh(geoEsfera, mat); g.add(o.malla); o.mats.push([mat, 1]);
+  } else if (o.cuerpo === 'estrella') {
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true });
+    o.malla = new THREE.Mesh(geoEsfera, mat); g.add(o.malla); o.mats.push([mat, 1]);
+    const sm = new THREE.SpriteMaterial({ map: texBrillo, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+    o.brillo = new THREE.Sprite(sm); g.add(o.brillo); o.mats.push([sm, 0.85]);
+  } else if (o.cuerpo === 'galaxia') {
+    const mat = new THREE.MeshBasicMaterial({ map: texGalaxia(o.forma || 'espiral', o.semilla || 7), color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    o.malla = new THREE.Mesh(geoPlano, mat); o.radioPx = 0.8;
+    const n = o.normal || V3(gauss(), gauss(), gauss()).normalize();
+    o.malla.quaternion.setFromUnitVectors(V3(0, 0, 1), n);
+    g.add(o.malla); o.mats.push([mat, o.opacidad ?? 0.95]);
+  } else if (o.cuerpo === 'cumulo') {
+    const N = o.miembros || 300, arr = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) { arr[i * 3] = gauss() * 0.42; arr[i * 3 + 1] = gauss() * 0.42; arr[i * 3 + 2] = gauss() * 0.42; }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+    const mat = new THREE.PointsMaterial({ color, size: 1.7 * DPR, sizeAttenuation: false, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, map: texPunto });
+    o.malla = new THREE.Points(geo, mat); g.add(o.malla); o.mats.push([mat, 0.55]);
+  } else if (o.cuerpo === 'cascaron' && o.alambre) {
+    // Burbuja dibujada con tres círculos máximos: se lee como esfera sin tapar lo de adentro
+    const mat = new THREE.LineBasicMaterial({ color, transparent: true, depthWrite: false });
+    o.malla = new THREE.Group();
+    for (const eje of [[0, 0, 0], [Math.PI / 2, 0, 0], [0, 0, Math.PI / 2], [Math.PI / 4, 0, Math.PI / 3]]) { const l = new THREE.LineLoop(circulo(160), mat); l.rotation.set(...eje); o.malla.add(l); }
+    g.add(o.malla); o.mats.push([mat, o.opacidad ?? 0.35]); o.sinMarcadorGrande = true;
+  } else if (o.cuerpo === 'cascaron') {
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, side: THREE.DoubleSide, depthWrite: false });
+    o.malla = new THREE.Mesh(geoEsfera, mat); g.add(o.malla); o.mats.push([mat, o.opacidad ?? 0.07]);
+    o.sinMarcadorGrande = true;
+  }
+  if (o.marcador !== false) {
+    const icono = o.cuerpo === 'galaxia' ? texGalaxia(o.forma === 'barrada' ? 'espiral' : o.forma || 'espiral', 3 + (o.semilla || 1)) : null;
+    if (icono) o.tamMarcador = (o.tamMarcador || 1) * 2.6;
+    const mat = new THREE.SpriteMaterial({ map: o.texMarcador || icono || texPunto, color, sizeAttenuation: false, transparent: true, depthWrite: false, blending: icono ? THREE.AdditiveBlending : THREE.NormalBlending });
+    o.marca = new THREE.Sprite(mat); o.marca.scale.setScalar(0.011 * (o.tamMarcador || 1)); g.add(o.marca);
+  }
+  if (o.etiqueta !== false) {
+    const w = document.createElement('div'); w.className = 'lblw';
+    const s = document.createElement('span'); s.className = 'lbl' + (o.css ? ' ' + o.css : '');
+    s.textContent = tx(o.nombre);
+    if (o.info !== false) s.addEventListener('click', (e) => { e.stopPropagation(); seleccionar(o.id); });
+    else s.style.pointerEvents = 'none';
+    w.appendChild(s);
+    o.etq = new CSS2DObject(w); o.etq.center.set(0.5, 1); o.etqIn = s; o.etq.visible = false;
+    g.add(o.etq);
+  }
+  OBJ.push(o); POR_ID[o.id] = o;
+  return o;
+}
+
+// Colores por tipo espectral
+const ESPECTRO = { O: 0x9bb0ff, B: 0xaabfff, A: 0xcad7ff, F: 0xf8f7ff, G: 0xfff1dc, K: 0xffd2a1, M: 0xffad72, T: 0xc0603a, W: 0xe0e8ff };
+
+// --- Sol ---
+crearObjeto({ id: 'sol', capa: 'sol', nombre: { en: 'Sun', es: 'Sol' }, tipo: { en: 'Star · G2V', es: 'Estrella · G2V' }, cuerpo: 'estrella', color: 0xfff1c8,
+  pos: V3(), radio: R_SOL, tamMarcador: 1.7, prioridad: 0, grupo: 'interior', factorBrillo: 6,
+  dato: { en: 'It holds 99.86% of the solar system’s mass; about 1.3 million Earths would fit inside it. Yet among the stars it is perfectly ordinary — notice how most of the stars nearby are smaller, dimmer red dwarfs.', es: 'Contiene el 99.86 % de la masa del sistema solar; dentro cabrían 1.3 millones de Tierras. Aun así, entre las estrellas es perfectamente común — fíjate en que casi todas sus vecinas son enanas rojas más pequeñas y tenues.' } });
+
+// --- Planetas ---
+for (const p of PLANETAS) {
+  const o = crearObjeto({ id: p.id, capa: 'planetas', nombre: p.nombre, tipo: { en: 'Planet', es: 'Planeta' }, cuerpo: 'esfera', color: p.color,
+    pos: posPlanetaAU(p, JD_HOY).multiplyScalar(AU), radio: p.radioKm * 1000, prioridad: p.id === 'tierra' ? 0 : 2, grupo: 'interior', dato: p.dato,
+    mapa: p.id === 'jupiter' ? texJupiter : null, planeta: p });
+  if (p.id === 'saturno') {
+    const anillo = new THREE.Mesh(new THREE.RingGeometry(1.28, 2.41, 96), new THREE.MeshBasicMaterial({ color: 0xcdbb8e, transparent: true, opacity: 0.6, side: THREE.DoubleSide }));
+    anillo.rotation.x = Math.PI / 2 - 0.47; o.malla.add(anillo); o.mats.push([anillo.material, 0.6]);
+  }
+}
+const oTierra = POR_ID.tierra;
+cargarTextura(URL_TEX + 'earth_atmos_2048.jpg', oTierra.malla.material);
+{ // Orientación real de la Tierra: eje inclinado y rotación según la hora sidérea de Greenwich
+  const gmst = (280.46061837 + 360.98564736629 * (JD_HOY - J2000)) * DEG;
+  const ex = eqAEscena(1, 0, 0), ey = eqAEscena(0, 1, 0), ez = eqAEscena(0, 0, 1);
+  const X = ex.clone().multiplyScalar(Math.cos(gmst)).add(ey.clone().multiplyScalar(Math.sin(gmst)));
+  const Z = ex.clone().multiplyScalar(Math.sin(gmst)).add(ey.clone().multiplyScalar(-Math.cos(gmst)));
+  oTierra.malla.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, ez, Z));
+}
+
+// --- Luna (posición real de hoy, con su cara visible mirando a la Tierra) ---
+const oLuna = crearObjeto({ id: 'luna', capa: 'tierraLuna', nombre: { en: 'Moon', es: 'Luna' }, tipo: { en: 'Natural satellite', es: 'Satélite natural' }, cuerpo: 'esfera', color: 0xbdbdbd,
+  pos: POS_LUNA, radio: 1.7374e6, prioridad: 1, grupo: 'interior',
+  dato: { en: 'Shown at its real position and phase for today. It drifts away from Earth about 3.8 cm per year — roughly as fast as your fingernails grow.', es: 'Aparece en su posición y fase reales de hoy. Se aleja de la Tierra unos 3.8 cm por año — más o menos lo que crecen tus uñas.' } });
+cargarTextura(URL_TEX + 'moon_1024.jpg', oLuna.malla.material);
+{ const X = POS_TIERRA.clone().sub(POS_LUNA).normalize(), Y = V3(0, 1, 0); Y.sub(X.clone().multiplyScalar(Y.dot(X))).normalize();
+  oLuna.malla.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, V3().crossVectors(X, Y))); }
+
+// --- Voyagers ---
+for (const v of VOYAGERS) crearObjeto({ id: v.id, capa: 'helio', v: [12.0, 12.8, 16.2, 17.0], nombre: v.nombre, tipo: { en: 'Interstellar probe · NASA', es: 'Sonda interestelar · NASA' },
+  color: v.color, css: v.css, pos: v.pos, prioridad: 1, tamMarcador: 1.1, grupo: 'solar', zVuelo: 13.4, dato: v.dato });
+
+// --- Estrellas cercanas (< 20 años-luz) ---
+const ESTRELLAS = [
+  ['proxima', 'Proxima Centauri', '14 29 43', '-62 40 46', 4.2465, 0.154, 'M', 1,
+    { en: 'The nearest star to the Sun: its light takes 4 years and 3 months to arrive, and Voyager 1 would need about 75,000 years. It hosts Proxima b, an Earth-mass planet in its habitable zone (discovered 2016).', es: 'La estrella más cercana al Sol: su luz tarda 4 años y 3 meses en llegar, y el Voyager 1 tardaría unos 75,000 años. Tiene a Proxima b, un planeta de masa terrestre en su zona habitable (descubierto en 2016).' }],
+  ['alfacen', 'Alpha Centauri A & B', '14 39 36', '-60 50 02', 4.367, 1.2234, 'G', 1,
+    { en: 'Two Sun-like stars that orbit each other every 80 years, together with Proxima. To the naked eye (from the southern hemisphere) they merge into the third-brightest star of the night sky.', es: 'Dos estrellas parecidas al Sol que se orbitan cada 80 años, junto con Proxima. A simple vista (desde el hemisferio sur) se funden en la tercera estrella más brillante del cielo nocturno.' }],
+  ['barnard', 'Barnard’s Star', '17 57 48', '+04 41 36', 5.963, 0.187, 'M', 2,
+    { en: 'The star that moves fastest across our sky: it shifts the width of a full Moon in about 180 years. In 2025 astronomers confirmed four small rocky planets orbiting it.', es: 'La estrella que más rápido se mueve en nuestro cielo: recorre el ancho de una Luna llena en unos 180 años. En 2025 se confirmaron cuatro pequeños planetas rocosos a su alrededor.' }],
+  ['luhman16', 'Luhman 16 A & B', '10 49 18.9', '-53 19 10', 6.51, 0.095, 'T', 4,
+    { en: 'A pair of brown dwarfs — "failed stars" too small to fuse hydrogen — found only in 2013. In 2014 one became the first brown dwarf with a weather map.', es: 'Un par de enanas marrones — "estrellas fallidas" demasiado pequeñas para fusionar hidrógeno — descubiertas apenas en 2013. En 2014 una se convirtió en la primera enana marrón con mapa del clima.' }, 'enana'],
+  ['wise0855', 'WISE 0855−0714', '08 55 10.8', '-07 14 42', 7.43, 0.09, 'T', 5,
+    { en: 'The coldest known brown dwarf: roughly −48 to −13 °C, as cold as a freezer. It glows only in infrared, invisible to the eye.', es: 'La enana marrón más fría conocida: entre −48 y −13 °C, como un congelador. Solo brilla en infrarrojo, invisible al ojo.' }, 'enana'],
+  ['wolf359', 'Wolf 359', '10 56 29', '+07 00 53', 7.86, 0.144, 'M', 4,
+    { en: 'One of the faintest, lowest-mass stars known; you need a telescope to see it even though it is one of our closest neighbors. Star Trek fans know it for a famous battle.', es: 'Una de las estrellas más tenues y ligeras que se conocen; necesitas telescopio para verla aunque es de nuestras vecinas más cercanas. Los fans de Star Trek la recuerdan por una famosa batalla.' }],
+  ['lalande', 'Lalande 21185', '11 03 20', '+35 58 12', 8.30, 0.392, 'M', 5,
+    { en: 'The brightest red dwarf in the northern sky, yet still too faint for the naked eye. Red dwarfs make up about three-quarters of all stars.', es: 'La enana roja más brillante del cielo norte, y aun así demasiado tenue para el ojo. Las enanas rojas son cerca de tres cuartas partes de todas las estrellas.' }],
+  ['sirio', 'Sirius A & B', '06 45 08.9', '-16 42 58', 8.60, 1.711, 'A', 1,
+    { en: 'The brightest star in the night sky. Its companion Sirius B is a white dwarf the size of Earth with the mass of the Sun: a teaspoon of it would weigh several tonnes.', es: 'La estrella más brillante del cielo nocturno. Su compañera Sirio B es una enana blanca del tamaño de la Tierra con la masa del Sol: una cucharadita pesaría varias toneladas.' }],
+  ['ross248', 'Ross 248', '23 41 55', '+44 10 30', 10.3, 0.16, 'M', 4,
+    { en: 'It is approaching us: in about 36,000 years it will become the nearest star to the Sun (about 3 light-years away). Voyager 2 will pass 1.7 light-years from it in ~40,000 years.', es: 'Se nos está acercando: en unos 36,000 años será la estrella más cercana al Sol (a unos 3 años-luz). El Voyager 2 pasará a 1.7 años-luz de ella en ~40,000 años.' }],
+  ['epseri', 'Epsilon Eridani', '03 32 56', '-09 27 30', 10.5, 0.735, 'K', 3,
+    { en: 'A young star surrounded by dust belts like our early solar system. In 1960 Frank Drake pointed a radio telescope at it in Project Ozma, the first search for alien signals.', es: 'Una estrella joven rodeada de cinturones de polvo, como nuestro sistema solar primitivo. En 1960 Frank Drake la apuntó con un radiotelescopio en el Proyecto Ozma, la primera búsqueda de señales alienígenas.' }],
+  ['procyon', 'Procyon', '07 39 18', '+05 13 30', 11.46, 2.048, 'F', 2,
+    { en: 'The eighth-brightest star in the sky; like Sirius, it has a white-dwarf companion. Its name means "before the dog": it rises just before Sirius, the Dog Star.', es: 'La octava estrella más brillante del cielo; como Sirio, tiene una compañera enana blanca. Su nombre significa "antes del perro": sale justo antes que Sirio, la Estrella del Perro.' }],
+  ['cyg61', '61 Cygni', '21 06 54', '+38 44 58', 11.4, 0.665, 'K', 4,
+    { en: 'In 1838 Friedrich Bessel measured its parallax: the first time anyone measured the distance to a star. Humanity suddenly knew how big the gaps between stars are.', es: 'En 1838 Friedrich Bessel midió su paralaje: la primera vez que alguien midió la distancia a una estrella. De pronto la humanidad supo qué tan enormes son los huecos entre estrellas.' }],
+  ['tauceti', 'Tau Ceti', '01 44 04', '-15 56 15', 11.9, 0.793, 'G', 3,
+    { en: 'One of the closest single Sun-like stars, visible to the naked eye. It was the other target of Project Ozma (1960) and appears in countless science-fiction stories.', es: 'Una de las estrellas solitarias parecidas al Sol más cercanas, visible a simple vista. Fue el otro objetivo del Proyecto Ozma (1960) y aparece en incontables historias de ciencia ficción.' }],
+  ['gliese445', 'Gliese 445', '11 47 41', '+78 41 28', 17.1, 0.24, 'M', 4,
+    { en: 'A dim red dwarf near the north celestial pole. In about 40,000 years Voyager 1 will drift within 1.6 light-years of it — the closest it will come to any star.', es: 'Una enana roja tenue cerca del polo norte celeste. En unos 40,000 años el Voyager 1 pasará a 1.6 años-luz de ella — lo más cerca que estará de cualquier estrella.' }],
+];
+for (const [id, nombre, ra, dec, dist, rad, esp, pri, dato, sub] of ESTRELLAS) {
+  crearObjeto({ id, capa: 'cercanas', nombre, tipo: sub === 'enana' ? { en: 'Brown dwarf', es: 'Enana marrón' } : { en: `Star · type ${esp}`, es: `Estrella · tipo ${esp}` },
+    cuerpo: 'estrella', color: ESPECTRO[esp], pos: posRaDec(ra, dec, dist * LY), radio: rad * R_SOL, prioridad: pri, grupo: 'cercanas', dato, esEstrella: true });
+}
+
+// --- Estrellas brillantes y objetos del vecindario (< 3,000 años-luz) ---
+const BRILLANTES = [
+  ['vega', 'Vega', '18 36 56', '+38 47 01', 25.0, 2.7, 'A', 2,
+    { en: 'In 1850 it became the first star (after the Sun) ever photographed. Because Earth’s axis wobbles, Vega will be our pole star around the year 14,000.', es: 'En 1850 fue la primera estrella (después del Sol) en ser fotografiada. Como el eje de la Tierra se bambolea, Vega será nuestra estrella polar hacia el año 14,000.' }],
+  ['arturo', { en: 'Arcturus', es: 'Arturo' }, '14 15 40', '+19 10 57', 36.7, 25.4, 'K', 2,
+    { en: 'In 1933 its light was used to switch on the lights of the Chicago World’s Fair: astronomers believed that light had left the star during the previous fair in 1893.', es: 'En 1933 su luz se usó para encender las luces de la Feria Mundial de Chicago: se creía que esa luz había salido de la estrella durante la feria anterior, en 1893.' }],
+  ['aldebaran', { en: 'Aldebaran', es: 'Aldebarán' }, '04 35 55', '+16 30 33', 65.3, 44.1, 'K', 3,
+    { en: 'The red eye of Taurus, 44 times wider than the Sun. Pioneer 10 is drifting in its general direction and would need about 2 million years to get there.', es: 'El ojo rojo de Tauro, 44 veces más ancho que el Sol. La Pioneer 10 viaja más o menos en su dirección y tardaría unos 2 millones de años en llegar.' }],
+  ['canopus', 'Canopus', '06 23 57', '-52 41 44', 310, 71, 'F', 2,
+    { en: 'The second-brightest star in the night sky. Spacecraft — Voyager included — have used it as a navigation reference to know which way they are pointing.', es: 'La segunda estrella más brillante del cielo nocturno. Las naves espaciales — incluidas las Voyager — la han usado como referencia de navegación para saber hacia dónde apuntan.' }],
+  ['polaris', { en: 'Polaris', es: 'Polaris (Estrella Polar)' }, '02 31 49', '+89 15 51', 433, 37.5, 'F', 2,
+    { en: 'It is not the brightest star (it ranks around 48th), but it sits almost exactly above Earth’s north pole, so it barely moves while the whole sky turns around it.', es: 'No es la más brillante (ocupa el lugar ~48), pero está casi exactamente sobre el polo norte de la Tierra: apenas se mueve mientras todo el cielo gira a su alrededor.' }],
+  ['betelgeuse', 'Betelgeuse', '05 55 10', '+07 24 25', 548, 764, 'M', 1,
+    { en: 'A red supergiant so huge that, in the Sun’s place, it would swallow Mercury, Venus, Earth, Mars and the asteroid belt. In 2025 its long-suspected companion star, Siwarha, was imaged for the first time. It will explode as a supernova sometime in the next ~100,000 years.', es: 'Una supergigante roja tan enorme que, en el lugar del Sol, se tragaría a Mercurio, Venus, la Tierra, Marte y el cinturón de asteroides. En 2025 se fotografió por primera vez su compañera, Siwarha. Explotará como supernova en algún momento de los próximos ~100,000 años.' }],
+  ['antares', 'Antares', '16 29 24', '-26 25 55', 550, 680, 'M', 2,
+    { en: 'Its name means "rival of Mars" because of its red color. Like Betelgeuse, it is a supergiant near the end of its life.', es: 'Su nombre significa "rival de Marte" por su color rojo. Como Betelgeuse, es una supergigante cerca del final de su vida.' }],
+  ['rigel', 'Rigel', '05 14 32', '-08 12 06', 860, 78.9, 'B', 2,
+    { en: 'A blue supergiant that shines like roughly 120,000 Suns. Its light left around the 12th century.', es: 'Una supergigante azul que brilla como unos 120,000 soles. Su luz salió alrededor del siglo XII.' }],
+  ['deneb', 'Deneb', '20 41 26', '+45 16 49', 2615, 203, 'A', 2,
+    { en: 'One of the most distant stars you can see with the naked eye — it must be incredibly luminous, around 200,000 Suns, to look this bright from ~2,600 light-years.', es: 'Una de las estrellas más lejanas que puedes ver a simple vista — debe ser increíblemente luminosa, unos 200,000 soles, para verse así desde ~2,600 años-luz.' }],
+];
+for (const [id, nombre, ra, dec, dist, rad, esp, pri, dato] of BRILLANTES) {
+  crearObjeto({ id, capa: 'brillantes', nombre, tipo: { en: `Star · type ${esp}`, es: `Estrella · tipo ${esp}` }, cuerpo: 'estrella', color: ESPECTRO[esp],
+    pos: posRaDec(ra, dec, dist * LY), radio: rad * R_SOL, prioridad: pri, grupo: 'vecindario', dato, esEstrella: true, tamMarcador: 1.25 });
+}
+crearObjeto({ id: 'pleyades', capa: 'brillantes', nombre: { en: 'Pleiades', es: 'Pléyades' }, tipo: { en: 'Star cluster', es: 'Cúmulo estelar' }, cuerpo: 'cumulo', miembros: 120, color: 0xaecbff,
+  pos: posRaDec('03 47 24', '+24 07 00', 444 * LY), radio: 8 * LY, diam: 16 * LY, prioridad: 3, grupo: 'vecindario',
+  dato: { en: 'A family of about 1,000 young stars born together ~100 million years ago (the dinosaurs never saw them form). Japan calls them Subaru — the car brand’s logo.', es: 'Una familia de unas 1,000 estrellas jóvenes nacidas juntas hace ~100 millones de años. En Japón se llaman Subaru — sí, el logo de la marca de autos.' } });
+crearObjeto({ id: 'orion', capa: 'brillantes', nombre: { en: 'Orion Nebula', es: 'Nebulosa de Orión' }, tipo: { en: 'Nebula', es: 'Nebulosa' }, cuerpo: 'cumulo', miembros: 220, color: 0xff9ec9,
+  pos: posRaDec('05 35 17', '-05 23 28', 1344 * LY), radio: 12 * LY, diam: 24 * LY, prioridad: 2, grupo: 'vecindario',
+  dato: { en: 'A stellar nursery 24 light-years wide where thousands of stars are being born right now. It is visible to the naked eye as the fuzzy "star" in Orion’s sword.', es: 'Una guardería estelar de 24 años-luz donde nacen miles de estrellas ahora mismo. Se ve a simple vista como la "estrella" borrosa en la espada de Orión.' } });
+
+// --- Fronteras y burbujas (información) ---
+crearObjeto({ id: 'heliopausa', capa: 'helio', nombre: { en: 'Heliopause', es: 'Heliopausa' }, tipo: { en: 'Boundary of the solar wind', es: 'Frontera del viento solar' }, cuerpo: 'cascaron', color: 0x9d7bff, opacidad: 0.05,
+  pos: V3(), radio: 120 * AU, marcador: false, css: 'helio', prioridad: 3, grupo: 'solar', sinDistancia: true, etqPos: V3(0, 0.75, 0.55),
+  stats: { en: [['Radius', '~120 AU (18 billion km)'], ['Crossed by Voyager 1', 'August 25, 2012'], ['Crossed by Voyager 2', 'November 5, 2018']], es: [['Radio', '~120 AU (18,000 millones de km)'], ['Cruzada por Voyager 1', '25 de agosto de 2012'], ['Cruzada por Voyager 2', '5 de noviembre de 2018']] },
+  dato: { en: 'The Sun’s bubble: here the solar wind halts against interstellar gas. Both Voyagers are already outside — the only human-made objects ever to leave.', es: 'La burbuja del Sol: aquí el viento solar se frena contra el gas interestelar. Ambas Voyager ya están afuera — los únicos objetos humanos que lo han logrado.' } });
+crearObjeto({ id: 'oort', capa: 'oort', nombre: { en: 'Oort Cloud', es: 'Nube de Oort' }, tipo: { en: 'Comet reservoir (inferred)', es: 'Reserva de cometas (inferida)' }, marcador: false, css: 'tenue',
+  pos: V3(), radio: 0, prioridad: 2, grupo: 'oort', sinDistancia: true, etqPos: V3(0, 0.5, 0.55), etqR: 30000 * AU,
+  stats: { en: [['Inner edge', '~2,000 AU'], ['Outer edge', '~100,000 AU (1.6 light-years) or more'], ['Contents', 'perhaps trillions of icy bodies']], es: [['Borde interno', '~2,000 AU'], ['Borde externo', '~100,000 AU (1.6 años-luz) o más'], ['Contenido', 'quizá billones de cuerpos helados']] },
+  dato: { en: 'Nobody has ever seen it directly: we infer it from long-period comets that fall in from every direction. Even at 17 km/s, Voyager 1 needs ~300 years to reach its inner edge and ~30,000 years to cross it.', es: 'Nadie la ha visto directamente: la inferimos por los cometas de periodo largo que caen desde todas direcciones. Aun a 17 km/s, el Voyager 1 necesita ~300 años para llegar a su borde interno y ~30,000 para cruzarla.' } });
+crearObjeto({ id: 'burbuja', capa: 'brillantes', v: [17.2, 17.8, 19.4, 20.2], nombre: { en: '📻 Our radio bubble', es: '📻 Nuestra burbuja de radio' }, tipo: { en: 'Human broadcasts', es: 'Transmisiones humanas' },
+  cuerpo: 'cascaron', color: 0x7ee2a8, opacidad: 0.06, pos: V3(), radio: 100 * LY, marcador: false, prioridad: 2, grupo: 'vecindario', sinDistancia: true, etqPos: V3(0.0, 0.8, 0.6),
+  stats: { en: [['Radius', '~100 light-years'], ['Started', 'first strong radio broadcasts, ~1920s']], es: [['Radio', '~100 años-luz'], ['Comenzó', 'primeras transmisiones de radio fuertes, ~1920s']] },
+  dato: { en: 'Our oldest radio and TV signals have spread about 100 light-years in every direction, reaching thousands of stars. Yet if the Milky Way were the size of Mexico, this bubble would be only about 6 km wide.', es: 'Nuestras señales de radio y TV más antiguas se han extendido unos 100 años-luz en todas direcciones, alcanzando miles de estrellas. Aun así, si la Vía Láctea fuera del tamaño de México, esta burbuja mediría apenas unos 6 km.' } });
+
+// --- Vía Láctea ---
+crearObjeto({ id: 'sgra', capa: 'viaLactea', nombre: { en: 'Sagittarius A*', es: 'Sagitario A*' }, tipo: { en: 'Supermassive black hole', es: 'Agujero negro supermasivo' }, color: 0xffb38a, css: 'lejos',
+  pos: CENTRO_GAL.clone(), radio: 1.27e10, prioridad: 1, grupo: 'galaxia', tamMarcador: 1.3, zVuelo: 20.3,
+  stats: { en: [['Mass', '4.3 million Suns']], es: [['Masa', '4.3 millones de soles']] },
+  dato: { en: 'The black hole at the heart of our galaxy, first imaged by the Event Horizon Telescope in 2022. Its event horizon would fit inside Mercury’s orbit.', es: 'El agujero negro del corazón de nuestra galaxia, fotografiado por primera vez por el Event Horizon Telescope en 2022. Su horizonte de eventos cabría dentro de la órbita de Mercurio.' } });
+crearObjeto({ id: 'aqui', capa: 'aqui', nombre: { en: '📍 You are here', es: '📍 Estás aquí' }, tipo: { en: 'You', es: 'Tú' }, color: 0xff9ad5, css: 'aqui', texMarcador: texAqui, tamMarcador: 1.9,
+  pos: V3(), prioridad: 0, grupo: 'galaxia', sinDistancia: true, comparable: false,
+  dato: { en: 'The Sun, the Earth and you. Everything humanity has ever done happened inside this single pixel.', es: 'El Sol, la Tierra y tú. Todo lo que la humanidad ha hecho ocurrió dentro de este único píxel.' } });
+const BRAZOS = [
+  [{ en: 'Perseus Arm', es: 'Brazo de Perseo' }, 0, 0.9], [{ en: 'Sagittarius Arm', es: 'Brazo de Sagitario' }, -1, 1.5],
+  [{ en: 'Scutum–Centaurus Arm', es: 'Brazo Escudo-Centauro' }, -2, 2.6], [{ en: 'Norma Arm', es: 'Brazo de Norma' }, -3, 3.9],
+];
+const B_ESPIRAL = Math.tan(12 * DEG);
+const radioBrazo = (k, th) => 33000 * Math.exp(B_ESPIRAL * (th + k * Math.PI / 2));
+for (const [nombre, k, th] of BRAZOS) {
+  const r = radioBrazo(k, th);
+  crearObjeto({ id: 'brazo' + k, capa: 'viaLactea', v: [20.4, 21.0, 21.9, 22.5], nombre, marcador: false, css: 'tenue', info: false, comparable: false,
+    pos: galAEscena(r * Math.cos(th), 0, r * Math.sin(th)), prioridad: 6 });
+}
+crearObjeto({ id: 'brazoOrion', capa: 'viaLactea', v: [19.9, 20.4, 21.6, 22.2], nombre: { en: 'Orion Spur (our arm)', es: 'Brazo de Orión (el nuestro)' }, marcador: false, css: 'tenue', info: false, comparable: false,
+  pos: galAEscena(26670 * Math.cos(-0.25), 0, 26670 * Math.sin(-0.25)), prioridad: 4 });
+
+// --- Grupo Local ---
+const GALAXIAS = [
+  ['viaLacteaG', { en: 'Milky Way', es: 'Vía Láctea' }, null, null, 0, 100000, 'barrada', [22.0, 22.6, 25.0, 25.8], 0, 'grupo',
+    { en: 'Our galaxy: 100–400 billion stars in a disk ~100,000 light-years wide. The Sun takes ~230 million years to orbit its center once.', es: 'Nuestra galaxia: 100 a 400 mil millones de estrellas en un disco de ~100,000 años-luz. El Sol tarda ~230 millones de años en darle una vuelta a su centro.' }],
+  ['lmc', { en: 'Large Magellanic Cloud', es: 'Gran Nube de Magallanes' }, '05 23 35', '-69 45 22', 163000, 32200, 'irregular', null, 2, 'grupo',
+    { en: 'A satellite galaxy visible to the naked eye from the southern hemisphere. It is massive enough to make the Milky Way’s disk wobble.', es: 'Una galaxia satélite visible a simple vista desde el hemisferio sur. Es tan masiva que hace bambolear el disco de la Vía Láctea.' }],
+  ['smc', { en: 'Small Magellanic Cloud', es: 'Pequeña Nube de Magallanes' }, '00 52 44.8', '-72 49 43', 203000, 18900, 'irregular', null, 3, 'grupo',
+    { en: 'The LMC’s little sibling, slowly being torn apart by the gravity of its two big neighbors.', es: 'La hermana menor de la Gran Nube, que poco a poco desgarra la gravedad de sus dos grandes vecinas.' }],
+  ['andromeda', { en: 'Andromeda Galaxy (M31)', es: 'Galaxia de Andrómeda (M31)' }, '00 42 44.3', '+41 16 09', 2.537e6, 152000, 'espiral', null, 1, 'grupo',
+    { en: 'The most distant thing most people can see with the naked eye: about a trillion stars. It approaches at ~110 km/s; a 2025 study puts the chance of a merger with the Milky Way within 10 billion years at roughly 50%.', es: 'Lo más lejano que la mayoría puede ver a simple vista: un billón de estrellas. Se acerca a ~110 km/s; un estudio de 2025 calcula ~50 % de probabilidad de que se fusione con la Vía Láctea en los próximos 10 mil millones de años.' }],
+  ['m33', { en: 'Triangulum Galaxy (M33)', es: 'Galaxia del Triángulo (M33)' }, '01 33 50', '+30 39 37', 2.73e6, 61100, 'espiral', null, 2, 'grupo',
+    { en: 'The third-largest member of the Local Group. Under perfectly dark skies, some people can just glimpse it without a telescope.', es: 'El tercer miembro más grande del Grupo Local. Con cielos perfectamente oscuros, algunas personas logran verla sin telescopio.' }],
+  ['m32', 'M32', '00 42 41.8', '+40 51 55', 2.49e6, 6500, 'eliptica', null, 5, 'grupo',
+    { en: 'A compact satellite of Andromeda, possibly the leftover core of a bigger galaxy that Andromeda stripped.', es: 'Un satélite compacto de Andrómeda, quizá el núcleo sobrante de una galaxia mayor que Andrómeda despojó.' }],
+  ['m110', 'M110', '00 40 22', '+41 41 07', 2.69e6, 17000, 'eliptica', null, 5, 'grupo',
+    { en: 'A dwarf elliptical galaxy orbiting Andromeda.', es: 'Una galaxia elíptica enana que orbita a Andrómeda.' }],
+  ['ngc6822', { en: 'Barnard’s Galaxy', es: 'Galaxia de Barnard' }, '19 44 56', '-14 47 21', 1.6e6, 7000, 'irregular', null, 4, 'grupo',
+    { en: 'A dwarf irregular galaxy full of star-forming regions, discovered by E. E. Barnard in 1884.', es: 'Una galaxia irregular enana llena de regiones de formación estelar, descubierta por E. E. Barnard en 1884.' }],
+  ['ic10', 'IC 10', '00 20 17', '+59 18 14', 2.2e6, 5000, 'irregular', null, 5, 'grupo',
+    { en: 'The nearest known starburst galaxy: it forms stars far faster than its size would suggest.', es: 'La galaxia con brote estelar más cercana: forma estrellas mucho más rápido de lo que su tamaño sugeriría.' }],
+  ['leoI', 'Leo I', '10 08 28', '+12 18 23', 820000, 2000, 'eliptica', null, 5, 'grupo',
+    { en: 'A dwarf spheroidal galaxy hidden in the glare of the bright star Regulus.', es: 'Una galaxia esferoidal enana escondida en el resplandor de la estrella Régulo.' }],
+  ['wlm', 'WLM', '00 01 58', '-15 27 39', 3.04e6, 8000, 'irregular', null, 5, 'grupo',
+    { en: 'A lonely dwarf galaxy at the edge of the Local Group that seems never to have interacted with anyone.', es: 'Una galaxia enana solitaria al borde del Grupo Local que parece no haber interactuado nunca con nadie.' }],
+  // Galaxias cercanas y cúmulos
+  ['m81', { en: 'Bode’s Galaxy (M81)', es: 'Galaxia de Bode (M81)' }, '09 55 33', '+69 03 55', 11.8e6, 90000, 'espiral', 'galCercanas', 2, 'grupo',
+    { en: 'A grand-design spiral, one of the brightest galaxies in the sky for small telescopes. It is tugging on its neighbor M82.', es: 'Una espiral de diseño perfecto, de las galaxias más brillantes para telescopios pequeños. Está jalando a su vecina M82.' }],
+  ['m82', { en: 'Cigar Galaxy (M82)', es: 'Galaxia del Cigarro (M82)' }, '09 55 52', '+69 40 47', 11.5e6, 37000, 'irregular', 'galCercanas', 4, 'grupo',
+    { en: 'A starburst galaxy that forms stars ~10 times faster than the Milky Way, stirred up by its encounter with M81.', es: 'Una galaxia con brote estelar que forma estrellas ~10 veces más rápido que la Vía Láctea, agitada por su encuentro con M81.' }],
+  ['cenA', 'Centaurus A', '13 25 27.6', '-43 01 09', 12e6, 60000, 'eliptica', 'galCercanas', 3, 'grupo',
+    { en: 'A giant galaxy that swallowed a spiral; its central black hole fires jets of plasma longer than the galaxy itself.', es: 'Una galaxia gigante que se tragó a una espiral; su agujero negro central dispara chorros de plasma más largos que la galaxia misma.' }],
+  ['m51', { en: 'Whirlpool Galaxy (M51)', es: 'Galaxia del Remolino (M51)' }, '13 29 53', '+47 11 43', 23e6, 76000, 'espiral', 'galCercanas', 2, 'laniakea',
+    { en: 'The first galaxy in which spiral arms were noticed (Lord Rosse, 1845) — before anyone knew galaxies were separate "island universes".', es: 'La primera galaxia en la que se notaron brazos espirales (Lord Rosse, 1845) — antes de que se supiera que las galaxias eran "universos isla" separados.' }],
+  ['m104', { en: 'Sombrero Galaxy (M104)', es: 'Galaxia del Sombrero (M104)' }, '12 39 59', '-11 37 23', 31.1e6, 49000, 'espiral', 'galCercanas', 3, 'laniakea',
+    { en: 'Seen almost edge-on, with a dark lane of dust that makes it look like a Mexican sombrero.', es: 'Se ve casi de canto, con una franja oscura de polvo que la hace parecer un sombrero mexicano.' }],
+  ['m87', 'M87 · Virgo A', '12 30 49.4', '+12 23 28', 53.5e6, 132000, 'eliptica', 'galCercanas', 1, 'laniakea',
+    { en: 'A giant elliptical galaxy at the heart of the Virgo Cluster. Its black hole, M87* (6.5 billion Suns), was the first black hole ever photographed (2019).', es: 'Una galaxia elíptica gigante en el corazón del Cúmulo de Virgo. Su agujero negro, M87* (6,500 millones de soles), fue el primero en ser fotografiado (2019).' }],
+];
+for (const [id, nombre, ra, dec, dist, diam, forma, capa, pri, grupo, dato, semilla] of GALAXIAS) {
+  const esMW = id === 'viaLacteaG';
+  crearObjeto({ id, nombre, tipo: { en: 'Galaxy', es: 'Galaxia' }, cuerpo: 'galaxia', forma, capa: Array.isArray(capa) || !capa ? 'grupoLocal' : capa, v: Array.isArray(capa) ? capa : null,
+    color: esMW ? 0xffffff : 0xe8ecff, pos: esMW ? CENTRO_GAL.clone() : posRaDec(ra, dec, dist * LY), radio: diam / 2 * LY, diam: diam * LY, prioridad: pri, grupo,
+    css: 'gal', semilla: 11 + id.length * 7 + (dec ? dec.length : 3), normal: esMW ? GAL_Y.clone() : null, opacidad: esMW ? 1 : 0.95, dato,
+    comparable: !esMW });
+}
+crearObjeto({ id: 'virgo', capa: 'galCercanas', nombre: { en: 'Virgo Cluster', es: 'Cúmulo de Virgo' }, tipo: { en: 'Galaxy cluster', es: 'Cúmulo de galaxias' }, cuerpo: 'cumulo', miembros: 500, color: 0xffe2b8,
+  pos: posRaDec('12 27 00', '+12 43 00', 53.8e6 * LY), radio: 7.5e6 * LY, diam: 15e6 * LY, prioridad: 2, grupo: 'laniakea',
+  dato: { en: 'More than 1,300 galaxies bound by gravity, 54 million light-years away. Its pull is slowly decelerating the Local Group’s escape from it.', es: 'Más de 1,300 galaxias unidas por la gravedad, a 54 millones de años-luz. Su atracción frena poco a poco la expansión que nos separa de él.' } });
+
+// --- Red cósmica: Laniakea y grandes estructuras ---
+const ESTRUCTURAS = [
+  ['laniakea', { en: 'Laniakea Supercluster', es: 'Supercúmulo Laniakea' }, '16 15 00', '-60 55 00', 250e6, 260e6, 'cascaron', 1, { en: 'Supercluster', es: 'Supercúmulo' }, 0x7fd3ff,
+    { en: 'Our home supercluster, mapped in 2014 by tracking how ~100,000 galaxies flow through space. "Laniakea" is Hawaiian for "immeasurable heaven". It spans ~520 million light-years, and we live near its outskirts.', es: 'Nuestro supercúmulo, cartografiado en 2014 siguiendo cómo fluyen ~100,000 galaxias por el espacio. "Laniakea" significa "cielo inconmensurable" en hawaiano. Mide ~520 millones de años-luz y vivimos cerca de su periferia.' }],
+  ['atractor', { en: 'Great Attractor', es: 'Gran Atractor' }, '16 15 00', '-60 55 00', 250e6, 0, null, 3, { en: 'Gravitational focus', es: 'Foco gravitacional' }, 0xffd36e,
+    { en: 'A gravitational "valley" toward which thousands of galaxies, ours included, are flowing at ~600 km/s. It sits behind the Milky Way’s dusty disk, so for decades it was hard to see.', es: 'Un "valle" gravitacional hacia el que fluyen miles de galaxias, la nuestra incluida, a ~600 km/s. Está detrás del disco polvoso de la Vía Láctea, por eso durante décadas fue difícil de ver.' }],
+  ['coma', { en: 'Coma Cluster', es: 'Cúmulo de Coma' }, '12 59 48.7', '+27 58 50', 321e6, 10e6, 'cumulo', 2, { en: 'Galaxy cluster', es: 'Cúmulo de galaxias' }, 0xffe2b8,
+    { en: 'Over 1,000 galaxies. In 1933 Fritz Zwicky noticed they move far too fast to be held together by visible matter — the first clue to dark matter.', es: 'Más de 1,000 galaxias. En 1933 Fritz Zwicky notó que se mueven demasiado rápido para mantenerse unidas solo con la materia visible: la primera pista de la materia oscura.' }],
+  ['shapley', { en: 'Shapley Supercluster', es: 'Supercúmulo de Shapley' }, '13 25 00', '-31 00 00', 650e6, 60e6, 'cumulo', 3, { en: 'Supercluster', es: 'Supercúmulo' }, 0xffd0a8,
+    { en: 'The largest concentration of galaxies in our cosmic neighborhood; part of the Milky Way’s motion through space is a pull toward it.', es: 'La mayor concentración de galaxias de nuestro vecindario cósmico; parte del movimiento de la Vía Láctea es una atracción hacia él.' }],
+  ['bootes', { en: 'Boötes Void', es: 'Vacío de Boötes' }, '14 50 00', '+46 00 00', 700e6, 165e6, 'vacio', 2, { en: 'Cosmic void', es: 'Vacío cósmico' }, 0x8b96b8,
+    { en: 'A sphere ~330 million light-years wide with very few galaxies. As one astronomer put it: if the Milky Way sat in its center, we wouldn’t have known other galaxies existed until the 1960s.', es: 'Una esfera de ~330 millones de años-luz casi sin galaxias. Como dijo un astrónomo: si la Vía Láctea estuviera en su centro, no habríamos sabido que existían otras galaxias hasta los años sesenta.' }],
+  ['sloan', { en: 'Sloan Great Wall', es: 'Gran Muralla Sloan' }, '13 00 00', '+05 00 00', 1.0e9, 0, null, 3, { en: 'Large-scale structure', es: 'Estructura a gran escala' }, 0xd7a3ff,
+    { en: 'A wall of galaxies about 1.4 billion light-years long, discovered in 2003 by the Sloan Digital Sky Survey.', es: 'Una muralla de galaxias de unos 1,400 millones de años-luz de largo, descubierta en 2003 por el Sloan Digital Sky Survey.' }],
+];
+for (const [id, nombre, ra, dec, dist, radioLy, cuerpo, pri, tipo, color, dato] of ESTRUCTURAS) {
+  crearObjeto({ id, capa: 'web', nombre, tipo, cuerpo: cuerpo === 'vacio' ? 'cascaron' : cuerpo, alambre: cuerpo === 'vacio', opacidad: cuerpo === 'vacio' ? 0.35 : 0.05, miembros: 700,
+    color, pos: posRaDec(ra, dec, dist * LY), radio: radioLy * LY, diam: radioLy ? 2 * radioLy * LY : (id === 'sloan' ? 1.37e9 * LY : 0), prioridad: pri, grupo: 'laniakea', dato,
+    marcador: cuerpo !== 'cascaron' && cuerpo !== 'vacio', css: 'gal', zVuelo: 25.0 });
+}
+
+// --- Lo más lejano: cuásares, la estrella y las galaxias más distantes ---
+const LEJANOS = [
+  ['ton618', 'TON 618', '12 28 24.9', '+31 28 38', 18.31e9, 10.83e9, { en: 'Quasar', es: 'Cuásar' }, 1.2e14,
+    { en: 'A quasar powered by one of the most massive black holes known (~40 billion Suns). Its event horizon alone would be ~1,600 AU wide — about 27 times the size of Neptune’s orbit.', es: 'Un cuásar alimentado por uno de los agujeros negros más masivos que se conocen (~40 mil millones de soles). Su horizonte de eventos mediría ~1,600 AU — unas 27 veces la órbita de Neptuno.' }],
+  ['earendel', 'Earendel', '01 37 23', '-08 27 52', 27.75e9, 12.9e9, { en: 'Most distant single star seen', es: 'La estrella individual más lejana vista' }, 0,
+    { en: 'Spotted by Hubble in 2022 thanks to a cosmic magnifying glass (a galaxy cluster bending its light). We see it as it was ~900 million years after the Big Bang.', es: 'Detectada por el Hubble en 2022 gracias a una lupa cósmica (un cúmulo de galaxias que curva su luz). La vemos como era ~900 millones de años después del Big Bang.' }],
+  ['gnz11', 'GN-z11', '12 36 25.46', '+62 14 31.4', 31.84e9, 13.35e9, { en: 'Early galaxy', es: 'Galaxia primitiva' }, 0,
+    { en: 'Hubble’s record-holder (2016); JWST later found it hosts an actively feeding black hole only ~430 million years after the Big Bang.', es: 'Récord del Hubble (2016); el JWST descubrió después que tiene un agujero negro activo apenas ~430 millones de años después del Big Bang.' }],
+  ['jades14', 'JADES-GS-z14-0', '03 32 19.9', '-27 51 20', 33.81e9, 13.50e9, { en: 'Early galaxy', es: 'Galaxia primitiva' }, 0,
+    { en: 'Record-holder in 2024. In 2025 astronomers detected oxygen in it — meaning earlier generations of stars had already lived and died within the first 300 million years.', es: 'Récord en 2024. En 2025 se detectó oxígeno en ella: generaciones previas de estrellas ya habían vivido y muerto en los primeros 300 millones de años.' }],
+  ['momz14', 'MoM-z14', '10 00 23', '+02 20 00', 33.86e9, 13.50e9, { en: 'Most distant galaxy confirmed', es: 'La galaxia más lejana confirmada' }, 0,
+    { en: 'The most distant galaxy ever confirmed (redshift 14.44, reported in 2025 with JWST): we see it just 280 million years after the Big Bang. Its light left 13.5 billion years ago; because space kept expanding, it is now ~34 billion light-years away.', es: 'La galaxia más lejana jamás confirmada (corrimiento al rojo 14.44, reportada en 2025 con el JWST): la vemos solo 280 millones de años después del Big Bang. Su luz salió hace 13,500 millones de años; como el espacio siguió expandiéndose, hoy está a ~34 mil millones de años-luz.' }],
+];
+for (const [id, nombre, ra, dec, dist, ltt, tipo, radio, dato] of LEJANOS) {
+  crearObjeto({ id, capa: 'universo', nombre, tipo, color: 0xffb38a, css: 'lejos', pos: posRaDec(ra, dec, dist * LY), ltt, radio, prioridad: id === 'momz14' ? 1 : 3,
+    grupo: 'observable', dato, zVuelo: 26.4, cosmologico: true });
+}
+
+/* ---- Anillos y horizontes (etiquetas con información) ---- */
+const ANILLOS = [];
+function anillo(radioM, nombre, v, color, info) {
+  ANILLOS.push({ radioM, v, color });
+  crearObjeto(Object.assign({ id: 'anillo' + ANILLOS.length, nombre, v, marcador: false, css: 'anillo', pos: V3(radioM * 0.707, 0, radioM * 0.707),
+    prioridad: 7, info: !!info, comparable: false, sinDistancia: true }, info || {}));
+}
+anillo(173.1 * AU, { en: '1 light-day', es: '1 día-luz' }, [12.6, 13.2, 14.6, 15.4], 0x2a3354);
+anillo(LY, { en: '1 light-year', es: '1 año-luz' }, [15.4, 16.0, 17.0, 17.8], 0x2a3354);
+for (const r of [5, 10, 15]) anillo(r * LY, { en: `${r} light-years`, es: `${r} años-luz` }, [16.6, 17.1, 18.4, 19.0], 0x2a3354);
+for (const r of [500, 1000, 2000]) anillo(r * LY, { en: `${fmtAnillo(r)} light-years`, es: `${fmtAnillo(r)} años-luz` }, [18.6, 19.2, 20.2, 20.8], 0x2a3354);
+for (const r of [1, 2.5]) anillo(r * 1e6 * LY, { en: `${r} million light-years`, es: `${r} millones de años-luz` }, [22.4, 23.0, 23.9, 24.5], 0x2a3354);
+for (const r of [100, 500]) anillo(r * 1e6 * LY, { en: `${r} million light-years`, es: `${r} millones de años-luz` }, [23.9, 24.4, 25.6, 26.2], 0x2a3354);
+function fmtAnillo(r) { return r.toLocaleString('en-US'); }
+anillo(14.45e9 * LY, { en: 'Hubble sphere · 14.4 billion ly', es: 'Esfera de Hubble · 14,400 millones de al' }, [25.8, 26.3, 27.7, 28.0], 0x3d4f8a,
+  { tipo: { en: 'Cosmic horizon', es: 'Horizonte cósmico' }, grupo: 'observable',
+    stats: { en: [['Radius', '~14.4 billion light-years']], es: [['Radio', '~14,400 millones de años-luz']] },
+    dato: { en: 'Galaxies beyond this sphere are moving away from us faster than light right now. That does not break relativity: nothing moves through space faster than light — it is space itself that stretches. And we can still see many of them!', es: 'Las galaxias más allá de esta esfera se alejan de nosotros más rápido que la luz ahora mismo. No rompe la relatividad: nada se mueve por el espacio más rápido que la luz — es el espacio mismo el que se estira. ¡Y aun así podemos ver muchas de ellas!' } });
+anillo(16.6e9 * LY, { en: 'Cosmic event horizon · 16.6 billion ly', es: 'Horizonte de eventos cósmico · 16,600 millones de al' }, [25.8, 26.3, 27.7, 28.0], 0x6a3d8a,
+  { tipo: { en: 'Cosmic horizon', es: 'Horizonte cósmico' }, grupo: 'observable',
+    stats: { en: [['Radius', '~16.6 billion light-years'], ['Share of observable galaxies beyond it', '~95 %']], es: [['Radio', '~16,600 millones de años-luz'], ['Galaxias observables más allá', '~95 %']] },
+    dato: { en: 'Light emitted TODAY by a galaxy beyond this distance will never reach us, and a signal we send today will never reach it, because the expansion of space is accelerating. About 95% of the galaxies we can see are already forever out of reach.', es: 'La luz que emita HOY una galaxia más allá de esta distancia nunca nos llegará, y una señal que enviemos hoy nunca la alcanzará, porque la expansión del espacio se acelera. Cerca del 95 % de las galaxias que vemos ya están fuera de nuestro alcance para siempre.' } });
+anillo(28.5e9 * LY, { en: 'Light that left 13 billion years ago', es: 'Luz que salió hace 13 mil millones de años' }, [25.8, 26.3, 27.7, 28.0], 0x2a3354);
+
+// Fronteras del universo observable
+crearObjeto({ id: 'cmb', capa: 'universo', nombre: { en: 'Cosmic Microwave Background', es: 'Fondo cósmico de microondas' }, tipo: { en: 'The oldest light', es: 'La luz más antigua' },
+  marcador: false, css: 'lejos', pos: V3(0, 45.3e9 * LY * 0.6, 45.3e9 * LY * 0.8), prioridad: 1, grupo: 'observable', sinDistancia: true, comparable: false,
+  stats: { en: [['Emitted', '380,000 years after the Big Bang'], ['Temperature today', '2.725 K (−270.4 °C)'], ['Its source is now', '~45.3 billion light-years away']], es: [['Emitida', '380,000 años después del Big Bang'], ['Temperatura hoy', '2.725 K (−270.4 °C)'], ['Su origen está hoy a', '~45,300 millones de años-luz']] },
+  dato: { en: 'The afterglow of the Big Bang, released when the universe cooled enough to become transparent. It fills the whole sky; about 1% of the "snow" on an old analog TV was this ancient light.', es: 'El resplandor del Big Bang, liberado cuando el universo se enfrió lo suficiente para volverse transparente. Llena todo el cielo; cerca del 1 % de la "nieve" de una TV analógica antigua era esta luz ancestral.' } });
+crearObjeto({ id: 'borde', capa: 'universo', nombre: { en: 'Edge of the observable universe', es: 'Borde del universo observable' }, tipo: { en: 'Particle horizon', es: 'Horizonte de partículas' },
+  marcador: false, css: 'lejos', pos: V3(46.5e9 * LY * 0.707, 0, -46.5e9 * LY * 0.707), prioridad: 0, grupo: 'observable', sinDistancia: true, comparable: false,
+  stats: { en: [['Radius', '~46.5 billion light-years'], ['Diameter', '~93 billion light-years'], ['Age of the universe', '13.8 billion years'], ['Galaxies inside', 'hundreds of billions to ~2 trillion']], es: [['Radio', '~46,500 millones de años-luz'], ['Diámetro', '~93,000 millones de años-luz'], ['Edad del universo', '13,800 millones de años'], ['Galaxias dentro', 'de cientos de miles de millones a ~2 billones']] },
+  dato: { en: 'How can it be 93 billion light-years across if it is only 13.8 billion years old? Because space kept expanding while the light was traveling: the places that emitted the oldest light we see are now much farther away.', es: '¿Cómo mide 93 mil millones de años-luz si solo tiene 13,800 millones de años? Porque el espacio siguió expandiéndose mientras la luz viajaba: los lugares que emitieron la luz más vieja que vemos hoy están mucho más lejos.' } });
+// Más allá: otros observadores y el universo no observable
+const OTROS = [V3(70e9, 18e9, -38e9), V3(-62e9, -34e9, 52e9)].map(v => v.multiplyScalar(LY));
+OTROS.forEach((c, i) => crearObjeto({ id: 'otro' + i, capa: 'masAlla', nombre: { en: 'Someone else’s observable universe', es: 'El universo observable de alguien más' }, tipo: { en: 'Thought experiment', es: 'Experimento mental' },
+  cuerpo: 'cascaron', alambre: true, opacidad: 0.4, color: 0x7fd3ff, pos: c, radio: 46.5e9 * LY, marcador: true, tamMarcador: 0.9, prioridad: 2, grupo: 'masalla', sinDistancia: true, comparable: false,
+  dato: { en: 'An observer in a galaxy far beyond our horizon would be at the center of their own observable bubble, just as big as ours. They would see galaxies we never will — and we see some they never will. Neither bubble is "the" universe.', es: 'Un observador en una galaxia mucho más allá de nuestro horizonte estaría en el centro de su propia burbuja observable, igual de grande que la nuestra. Vería galaxias que nosotros nunca veremos — y nosotros algunas que esa persona nunca verá. Ninguna burbuja es "el" universo.' } }));
+crearObjeto({ id: 'noobs', capa: 'masAlla', nombre: { en: '? The unobservable universe', es: '? El universo no observable' }, tipo: { en: 'Beyond our horizon', es: 'Más allá de nuestro horizonte' },
+  marcador: false, css: 'tenue', pos: V3(-90e9, 60e9, -40e9).multiplyScalar(LY), prioridad: 1, grupo: 'masalla', sinDistancia: true, comparable: false,
+  dato: { en: 'Its light has not reached us yet — and for most of it, it never will. Since space looks flat, cosmologists think it continues much like what we see: more galaxies, perhaps without end. The faint dots out here are an illustration, not data.', es: 'Su luz aún no nos llega — y en su mayoría nunca llegará. Como el espacio parece plano, los cosmólogos creen que continúa parecido a lo que vemos: más galaxias, quizá sin fin. Los puntos tenues de aquí son una ilustración, no datos.' } });
+
+/* ============================================================
+   7. DECORADO: órbitas, nubes de puntos, la galaxia, la red cósmica
+   Cada pieza tiene un ancla (m), una unidad local (m) y una ventana.
+   ============================================================ */
+const DECOR = [];
+function decor(obj, v, ancla, unidad, mats, extRadio = 0) { escena.add(obj); obj.visible = false; const d = { obj, v, ancla, unidad, mats, extRadio }; DECOR.push(d); return d; }
+function nubePuntos(arr, colores, size, opacidad, extra = {}) {
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+  if (colores) g.setAttribute('color', new THREE.BufferAttribute(colores, 3));
+  const m = new THREE.PointsMaterial(Object.assign({ size: size * DPR, sizeAttenuation: false, transparent: true, opacity: opacidad, depthWrite: false, vertexColors: !!colores, blending: THREE.AdditiveBlending, map: texPunto }, extra));
+  const p = new THREE.Points(g, m); p.frustumCulled = false; return [p, m];
+}
+function circulo(N = 256) { const a = new Float32Array(N * 3); for (let i = 0; i < N; i++) { const th = i / N * Math.PI * 2; a[i * 3] = Math.cos(th); a[i * 3 + 2] = Math.sin(th); } const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(a, 3)); return g; }
+
+// Órbitas planetarias (en AU)
+for (const p of PLANETAS) {
+  const N = 256, arr = new Float32Array(N * 3), per = Math.pow(p.a, 1.5) * 365.25;
+  for (let i = 0; i < N; i++) { const q = posPlanetaAU(p, J2000 + i / N * per); arr[i * 3] = q.x; arr[i * 3 + 1] = q.y; arr[i * 3 + 2] = q.z; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+  const m = new THREE.LineBasicMaterial({ color: 0x3a4a78, transparent: true, opacity: 0.6 });
+  decor(new THREE.LineLoop(g, m), [p.a < 2 ? 9.6 : 10.6, p.a < 2 ? 10.4 : 11.4, 14.0, 14.9], V3(), AU, [[m, 0.6]], p.a * AU);
+}
+// Órbita de la Luna, órbita de la ISS y anillo geoestacionario (alrededor de la Tierra, en km)
+{
+  const polo = eqAEscena(0, 0, 1), q = new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), polo);
+  const luna = posLunaGeo(JD_HOY), nLuna = V3().crossVectors(luna, posLunaGeo(JD_HOY + 1)).normalize();
+  const items = [
+    [POS_LUNA.distanceTo(POS_TIERRA) / 1000, new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), nLuna), 0x46557f, [7.6, 8.2, 9.9, 10.9]],
+    [42164, q, 0x3d6b5a, [7.0, 7.1, 8.6, 9.4]],
+    [6371 + 420, q.clone().multiply(new THREE.Quaternion().setFromAxisAngle(V3(1, 0, 0), 51.6 * DEG)), 0x6b5a3d, [6.5, 6.6, 7.8, 8.4]],
+  ];
+  for (const [rKm, quat, color, v] of items) {
+    const m = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.7 });
+    const l = new THREE.LineLoop(circulo(256), m); l.quaternion.copy(quat);
+    l.scale.setScalar(rKm); const grupo = new THREE.Group(); grupo.add(l);
+    decor(grupo, v, POS_TIERRA, 1000, [[m, 0.7]], rKm * 1000);
+  }
+  crearObjeto({ id: 'geo', v: [7.0, 7.1, 8.6, 9.4], nombre: { en: 'Geostationary ring · 35,786 km up', es: 'Anillo geoestacionario · a 35,786 km' }, marcador: false, css: 'anillo', prioridad: 6, info: false, comparable: false,
+    pos: POS_TIERRA.clone().add(eqAEscena(42164e3 * 0.707, 42164e3 * 0.707, 0)) });
+  crearObjeto({ id: 'iss', v: [6.5, 6.6, 7.8, 8.4], nombre: { en: 'ISS orbit · ~420 km up', es: 'Órbita de la ISS · a ~420 km' }, marcador: false, css: 'anillo', prioridad: 6, info: false, comparable: false,
+    pos: POS_TIERRA.clone().add(V3(6791e3, 0, 0).applyQuaternion(items[2][1])) });
+}
+// Anillos de referencia (círculos unitarios escalados)
+for (const a of ANILLOS) {
+  const m = new THREE.LineBasicMaterial({ color: a.color, transparent: true, opacity: 0.75 });
+  decor(new THREE.LineLoop(circulo(256), m), a.v, V3(), a.radioM, [[m, 0.75]], a.radioM);
+}
+// Líneas Sol → Voyager
+for (const v of VOYAGERS) {
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0, v.pos.x / AU, v.pos.y / AU, v.pos.z / AU]), 3));
+  const m = new THREE.LineDashedMaterial({ color: v.color, transparent: true, opacity: 0.5, dashSize: 3, gapSize: 2 });
+  const l = new THREE.Line(g, m); l.computeLineDistances();
+  decor(l, [12.0, 12.8, 16.2, 17.0], V3(), AU, [[m, 0.5]], v.pos.length());
+}
+// Cinturón de Kuiper (30–50 AU)
+{ const N = 4000, a = new Float32Array(N * 3); for (let i = 0; i < N; i++) { const r = 30 + rnd() * 20, th = rnd() * Math.PI * 2; a[i * 3] = r * Math.cos(th); a[i * 3 + 1] = gauss() * 2.2; a[i * 3 + 2] = r * Math.sin(th); }
+  const [p, m] = nubePuntos(a, null, 1.2, 0.35, { color: 0x8fa0c8 }); decor(p, [12.4, 13.0, 14.6, 15.4], V3(), AU, [[m, 0.35]], 50 * AU); }
+// Nube de Oort (2,000–100,000 AU)
+{ const N = 5000, a = new Float32Array(N * 3); for (let i = 0; i < N; i++) { const r = 2000 * Math.pow(50, Math.pow(rnd(), 0.45)), u = rnd() * 2 - 1, th = rnd() * Math.PI * 2, s = Math.sqrt(1 - u * u); a[i * 3] = r * s * Math.cos(th); a[i * 3 + 1] = r * u; a[i * 3 + 2] = r * s * Math.sin(th); }
+  const [p, m] = nubePuntos(a, null, 1.5, 0.5, { color: 0x8b96c8 }); decor(p, CAPAS.oort, V3(), AU, [[m, 0.5]], 1e5 * AU); }
+// Líneas verticales de las estrellas al plano de la eclíptica (revelan la 3ª dimensión)
+for (const [capa, ids] of [['cercanas', ESTRELLAS.map(e => e[0])], ['brillantes', BRILLANTES.map(e => e[0])]]) {
+  const arr = new Float32Array(ids.length * 6);
+  ids.forEach((id, i) => { const p = POR_ID[id].pos.clone().divideScalar(LY); arr.set([p.x, p.y, p.z, p.x, 0, p.z], i * 6); });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+  const m = new THREE.LineBasicMaterial({ color: 0x3b4670, transparent: true, opacity: 0.5 });
+  decor(new THREE.LineSegments(g, m), capa === 'cercanas' ? [16.6, 17.3, 18.6, 19.4] : [18.2, 18.9, 19.9, 20.7], V3(), LY, [[m, 0.5]], 3000 * LY);
+}
+
+// Vía Láctea: barra central, bulbo, 4 brazos espirales (pitch 12°), brazo de Orión y disco (en años-luz, marco galáctico)
+const MW_LOCAL = [];
+{
+  const N = 90000, pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+  const poner = (i, x, y, z, r, g, b) => { pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z; col[i * 3] = r; col[i * 3 + 1] = g; col[i * 3 + 2] = b; };
+  const barraAng = -27 * DEG + Math.PI;    // la barra apunta ~27° respecto a la línea Sol–centro
+  for (let i = 0; i < N; i++) {
+    const f = rnd();
+    if (f < 0.10) {          // bulbo
+      const r = Math.abs(gauss()) * 2800, u = rnd() * 2 - 1, th = rnd() * Math.PI * 2, s = Math.sqrt(1 - u * u);
+      poner(i, r * s * Math.cos(th), r * u * 0.6, r * s * Math.sin(th), 0.3, 0.24, 0.16);
+    } else if (f < 0.17) {   // barra
+      const L = (rnd() * 2 - 1) * 13500, w = gauss() * 1600, c = Math.cos(barraAng), s = Math.sin(barraAng);
+      poner(i, L * c - w * s, gauss() * 400, L * s + w * c, 0.3, 0.25, 0.17);
+    } else if (f < 0.85) {   // brazos
+      const k = -Math.floor(rnd() * 4);
+      const r = 9500 + 42500 * Math.pow(rnd(), 1.25);
+      const ang = Math.log(r / 33000) / B_ESPIRAL - k * Math.PI / 2;
+      const ancho = 900 + r * 0.03, dr = gauss() * ancho, dz = gauss() * 280;
+      const rr = r + dr, rosa = rnd() < 0.05;
+      poner(i, rr * Math.cos(ang), dz, rr * Math.sin(ang), rosa ? 0.55 : 0.32, rosa ? 0.25 : 0.38, rosa ? 0.35 : 0.55);
+    } else if (f < 0.865) {  // brazo de Orión (espolón local)
+      const ang = -0.55 + rnd() * 0.75, r = 26670 + (ang + 0.1) * 2500 + gauss() * 900;
+      poner(i, r * Math.cos(ang), gauss() * 200, r * Math.sin(ang), 0.3, 0.36, 0.5);
+    } else {                 // disco difuso
+      const r = -Math.log(1 - rnd() * 0.995) * 11000 + 2000, th = rnd() * Math.PI * 2;
+      poner(i, r * Math.cos(th), gauss() * 500, r * Math.sin(th), 0.25, 0.25, 0.3);
+    }
+  }
+  const [p, m] = nubePuntos(pos, col, 1.6, 0.9);
+  p.quaternion.copy(QUAT_GAL);
+  decor(p, CAPAS.viaLactea, CENTRO_GAL, LY, [[m, 0.9]], 60000 * LY);
+}
+
+// Red cósmica local (radio ~1.6 mil millones de años-luz): nodos, filamentos y cúmulos. Ilustrativa.
+{
+  const NN = 3200, R = 1.6e3, nodos = [];     // en millones de años-luz
+  nodos.push([0, 0, 0]);
+  const virgo = POR_ID.virgo.pos.clone().divideScalar(1e6 * LY); nodos.push([virgo.x, virgo.y, virgo.z]);
+  while (nodos.length < NN) { const x = (rnd() * 2 - 1) * R, y = (rnd() * 2 - 1) * R, z = (rnd() * 2 - 1) * R; if (x * x + y * y + z * z < R * R) nodos.push([x, y, z]); }
+  const segs = [];
+  for (let i = 0; i < NN; i++) {
+    const [ax, ay, az] = nodos[i], mejores = [];
+    for (let j = 0; j < NN; j++) { if (j === i) continue; const dx = nodos[j][0] - ax, dy = nodos[j][1] - ay, dz = nodos[j][2] - az, d = dx * dx + dy * dy + dz * dz;
+      if (mejores.length < 3) { mejores.push([d, j]); mejores.sort((a, b) => a[0] - b[0]); } else if (d < mejores[2][0]) { mejores[2] = [d, j]; mejores.sort((a, b) => a[0] - b[0]); } }
+    for (const [, j] of mejores) if (j > i || rnd() < 0.3) segs.push([i, j]);
+  }
+  const porSeg = 14, NC = 22, total = segs.length * porSeg + NN * NC;
+  const pos = new Float32Array(total * 3), col = new Float32Array(total * 3); let n = 0;
+  const poner = (x, y, z, r, g, b) => { pos[n * 3] = x; pos[n * 3 + 1] = y; pos[n * 3 + 2] = z; col[n * 3] = r; col[n * 3 + 1] = g; col[n * 3 + 2] = b; n++; };
+  for (const [i, j] of segs) { const a = nodos[i], b = nodos[j]; for (let k = 0; k < porSeg; k++) { const s = rnd(); poner(a[0] + (b[0] - a[0]) * s + gauss() * 6, a[1] + (b[1] - a[1]) * s + gauss() * 6, a[2] + (b[2] - a[2]) * s + gauss() * 6, 0.32, 0.36, 0.6); } }
+  for (const a of nodos) for (let k = 0; k < NC; k++) poner(a[0] + gauss() * 7, a[1] + gauss() * 7, a[2] + gauss() * 7, 0.6, 0.5, 0.42);
+  const [p, m] = nubePuntos(pos.subarray(0, n * 3), col.subarray(0, n * 3), 1.4, 0.7);
+  decor(p, CAPAS.web, V3(), 1e6 * LY, [[m, 0.7]], R * 1e6 * LY);
+}
+// Universo observable: niebla de galaxias (uniforme a gran escala: "el fin de la grandeza"), esfera del CMB
+{
+  const N = 160000, a = new Float32Array(N * 3), c = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const r = 46.5 * Math.cbrt(rnd()), u = rnd() * 2 - 1, th = rnd() * Math.PI * 2, s = Math.sqrt(1 - u * u);
+    a.set([r * s * Math.cos(th), r * u, r * s * Math.sin(th)], i * 3);
+    const calido = r / 46.5;   // la luz más lejana llega más enrojecida
+    c.set([0.35 + 0.25 * calido, 0.36, 0.55 - 0.25 * calido], i * 3);
+  }
+  const [p, m] = nubePuntos(a, c, 1.2, 0.55); decor(p, CAPAS.universo, V3(), 1e9 * LY, [[m, 0.55]], 46.5e9 * LY);
+  const mF = new THREE.MeshBasicMaterial({ map: texCMB, transparent: true, opacity: 0.1, side: THREE.FrontSide, depthWrite: false });
+  const mB = new THREE.MeshBasicMaterial({ map: texCMB, transparent: true, opacity: 0.38, side: THREE.BackSide, depthWrite: false });
+  const gCMB = new THREE.Group(); gCMB.add(new THREE.Mesh(geoEsfera, mB), new THREE.Mesh(geoEsfera, mF));
+  decor(gCMB, CAPAS.universo, V3(), 45.3e9 * LY, [[mF, 0.1], [mB, 0.38]], 45.3e9 * LY);
+  // Más allá del horizonte: el universo probablemente continúa (ilustración)
+  const N2 = 70000, b = new Float32Array(N2 * 3);
+  for (let i = 0; i < N2; i++) { const r = 47 + 95 * Math.pow(rnd(), 0.6), u = rnd() * 2 - 1, th = rnd() * Math.PI * 2, s = Math.sqrt(1 - u * u); b.set([r * s * Math.cos(th), r * u, r * s * Math.sin(th)], i * 3); }
+  const [p2, m2] = nubePuntos(b, null, 1.1, 0.25, { color: 0x5a6aa0 }); decor(p2, CAPAS.masAlla, V3(), 1e9 * LY, [[m2, 0.25]], 142e9 * LY);
+}
+// Cielo de fondo: estrellas lejanas concentradas hacia el plano de la Vía Láctea (solo mientras estás dentro de la galaxia)
+const fondo = (() => {
+  const N = 7000, a = new Float32Array(N * 3), c = new Float32Array(N * 3), R = 60000;
+  for (let i = 0; i < N; i++) {
+    let d;
+    if (rnd() < 0.5) { const lon = rnd() * Math.PI * 2, lat = gauss() * 9 * DEG; d = GAL_X.clone().multiplyScalar(Math.cos(lat) * Math.cos(lon)).add(GAL_Z.clone().multiplyScalar(Math.cos(lat) * Math.sin(lon))).add(GAL_Y.clone().multiplyScalar(Math.sin(lat))); }
+    else { const u = rnd() * 2 - 1, th = rnd() * Math.PI * 2, s = Math.sqrt(1 - u * u); d = V3(s * Math.cos(th), u, s * Math.sin(th)); }
+    a.set([d.x * R, d.y * R, d.z * R], i * 3);
+    const b = 0.25 + rnd() * 0.6, tin = rnd(); c.set([b * (tin > 0.75 ? 1 : 0.88), b * 0.9, b * (tin < 0.3 ? 1 : 0.92)], i * 3);
+  }
+  const [p, m] = nubePuntos(a, c, 1.5, 0.85); p.renderOrder = -1; escena.add(p); return { p, m };
+})();
+
+// Comparación de tamaño al volar a una estrella: órbitas de la Tierra y Júpiter + el Sol "fantasma"
+const comparacion = new THREE.Group(); escena.add(comparacion); comparacion.visible = false;
+const matCompT = new THREE.LineDashedMaterial({ color: 0x4f87d4, transparent: true, opacity: 0.8, dashSize: 0.04, gapSize: 0.03 });
+const matCompJ = new THREE.LineDashedMaterial({ color: 0xd8b48a, transparent: true, opacity: 0.8, dashSize: 0.04, gapSize: 0.03 });
+for (const [r, m] of [[1, matCompT], [5.2, matCompJ]]) { const l = new THREE.LineLoop(circulo(256), m); l.scale.setScalar(r); l.computeLineDistances(); comparacion.add(l); }
+const etqCompT = etiquetaSuelta('anillo', 'anilloT'), etqCompJ = etiquetaSuelta('anillo', 'anilloJ');
+etqCompT.position.set(0.707, 0, 0.707); etqCompJ.position.set(5.2 * 0.707, 0, 5.2 * 0.707);
+comparacion.add(etqCompT, etqCompJ);
+const solFantasma = new THREE.Mesh(geoEsfera, new THREE.MeshBasicMaterial({ color: 0xfff1c8, transparent: true, opacity: 0.85 }));
+const etqFantasma = etiquetaSuelta('fantasma', 'fantasma'); escena.add(solFantasma); solFantasma.add(etqFantasma); solFantasma.visible = false;
+function etiquetaSuelta(css, clave) {
+  const w = document.createElement('div'); ETQ_SUELTAS.push(w); w.className = 'lblw'; const s = document.createElement('span'); s.className = 'lbl ' + css; s.style.pointerEvents = 'none'; s.dataset.clave = clave; s.textContent = t(clave); w.appendChild(s);
+  const o = new CSS2DObject(w); o.center.set(0.5, 1); return o;
+}
+
+// Resaltado de la selección
+const resaltado = new THREE.Sprite(new THREE.SpriteMaterial({ map: texAnilloSel, transparent: true, depthWrite: false, depthTest: false, sizeAttenuation: false }));
+resaltado.scale.setScalar(0.035); resaltado.visible = false; escena.add(resaltado);
+
+// Ubicación de etiquetas de cascarones (relativa al radio)
+for (const o of OBJ) if (o.etqPos && o.etq) { o.etqDesp = o.etqPos.clone().normalize().multiplyScalar(o.etqR || o.radio); }
+
+/* ============================================================
+   8. PARADAS (las potencias de diez) Y DATOS CURIOSOS
+   ============================================================ */
+const camDir = (elev, az) => V3(Math.cos(elev * DEG) * Math.sin(az * DEG), Math.sin(elev * DEG), Math.cos(elev * DEG) * Math.cos(az * DEG));
+const PARADAS = [
+  { id: 'tierra', z: 9.15, emoji: '🌍', nombre: { en: 'Earth & Moon', es: 'Tierra y Luna' }, dir: camDir(28, 35), datos: [
+    { en: 'All the other planets of the solar system would fit, side by side, in the average gap between Earth and the Moon (384,400 km).', es: 'Todos los demás planetas del sistema solar cabrían, uno junto a otro, en la distancia promedio entre la Tierra y la Luna (384,400 km).' },
+    { en: 'Light crosses the Earth–Moon gap in 1.28 seconds: Apollo astronauts’ radio replies arrived with a 2.6-second round-trip delay.', es: 'La luz cruza la distancia Tierra–Luna en 1.28 segundos: las respuestas por radio de los astronautas del Apolo llegaban con 2.6 segundos de retraso ida y vuelta.' },
+    { en: 'If Earth were a basketball, the International Space Station would orbit less than 1 cm above its surface.', es: 'Si la Tierra fuera un balón de básquetbol, la Estación Espacial Internacional orbitaría a menos de 1 cm de su superficie.' },
+    { en: 'Geostationary satellites (35,786 km up) circle exactly as fast as Earth spins, so they appear frozen in the sky — that is why satellite dishes never move.', es: 'Los satélites geoestacionarios (a 35,786 km) giran exactamente al ritmo de la Tierra, así que parecen congelados en el cielo — por eso las antenas satelitales nunca se mueven.' },
+    { en: 'The Moon moves away from us about 3.8 cm per year, as fast as your fingernails grow. We know it thanks to mirrors left on its surface by Apollo astronauts.', es: 'La Luna se aleja de nosotros unos 3.8 cm por año, tan rápido como crecen tus uñas. Lo sabemos gracias a espejos que dejaron en su superficie los astronautas del Apolo.' },
+  ] },
+  { id: 'interior', z: 11.85, emoji: '☀️', nombre: { en: 'Sun & inner planets', es: 'Sol y planetas interiores' }, dir: camDir(38, 20), datos: [
+    { en: 'At true scale, the Sun is just a dot here. About 1.3 million Earths would fit inside it.', es: 'A escala real, el Sol aquí es apenas un punto. Dentro de él cabrían unos 1.3 millones de Tierras.' },
+    { en: 'Sunlight takes 8 min 20 s to reach us: you always see the Sun as it was eight minutes ago.', es: 'La luz del Sol tarda 8 min 20 s en llegar: siempre ves al Sol como era hace ocho minutos.' },
+    { en: 'That light is old in another way: energy made in the Sun’s core takes tens of thousands of years (up to ~170,000) to random-walk its way out to the surface.', es: 'Esa luz es vieja en otro sentido: la energía producida en el núcleo del Sol tarda decenas de miles de años (hasta ~170,000) en abrirse paso hasta la superficie.' },
+    { en: 'Venus spins backwards and so slowly that its day (243 Earth days) lasts longer than its year (225 days).', es: 'Venus gira al revés y tan lento que su día (243 días terrestres) dura más que su año (225 días).' },
+  ] },
+  { id: 'solar', z: 13.85, emoji: '🪐', nombre: { en: 'Solar system & Voyagers', es: 'Sistema solar y Voyagers' }, dir: camDir(32, 10), datos: [
+    { en: '<b>This month’s milestone:</b> around November 18, 2026, Voyager 1 becomes the first human object ever to be one light-day from Earth (25.9 billion km). Launched in 1977, it is still talking to us with a 22-watt transmitter.', es: '<b>El hito de este mes:</b> alrededor del 18 de noviembre de 2026, el Voyager 1 se convierte en el primer objeto humano a un día-luz de la Tierra (25,900 millones de km). Lanzado en 1977, todavía nos habla con un transmisor de 22 watts.' },
+    { en: 'The Sun holds 99.86% of the solar system’s mass; Jupiter has more than twice the mass of all other planets combined.', es: 'El Sol tiene el 99.86 % de la masa del sistema solar; Júpiter tiene más del doble de la masa de todos los demás planetas juntos.' },
+    { en: 'Neptune takes 165 years to orbit the Sun: since it was discovered in 1846 it has completed exactly one lap (in 2011).', es: 'Neptuno tarda 165 años en darle la vuelta al Sol: desde que se descubrió en 1846 ha completado exactamente una vuelta (en 2011).' },
+    { en: 'The Kuiper Belt (30–50 AU), home of Pluto, holds countless icy worlds. New Horizons flew past Pluto in 2015 after a 9.5-year trip.', es: 'El Cinturón de Kuiper (30–50 AU), hogar de Plutón, alberga incontables mundos helados. La New Horizons pasó junto a Plutón en 2015 tras un viaje de 9.5 años.' },
+  ] },
+  { id: 'oort', z: 16.6, emoji: '☄️', nombre: { en: 'Oort Cloud', es: 'Nube de Oort' }, dir: camDir(26, 40), datos: [
+    { en: 'The Sun’s gravity still rules out here. The Oort Cloud may reach 100,000 AU (1.6 light-years) or more — over a third of the way to the nearest star.', es: 'Aquí la gravedad del Sol todavía manda. La Nube de Oort podría llegar a 100,000 AU (1.6 años-luz) o más — más de un tercio del camino a la estrella más cercana.' },
+    { en: 'No one has ever seen it: we infer it from long-period comets that plunge in from every direction after journeys of thousands to millions of years.', es: 'Nadie la ha visto: la inferimos por los cometas de periodo largo que caen desde todas direcciones tras viajes de miles a millones de años.' },
+    { en: 'Even at 17 km/s, Voyager 1 needs ~300 years to reach the inner edge of the Oort Cloud and ~30,000 years to cross it.', es: 'Aun a 17 km/s, el Voyager 1 necesita ~300 años para llegar al borde interno de la Nube de Oort y ~30,000 años para cruzarla.' },
+    { en: 'The distant dwarf planet Sedna takes about 11,400 years to orbit the Sun once. Its last perihelion was when humans were just inventing agriculture.', es: 'El lejano planeta enano Sedna tarda unos 11,400 años en darle una vuelta al Sol. Su último perihelio ocurrió cuando la humanidad apenas inventaba la agricultura.' },
+  ] },
+  { id: 'cercanas', z: 17.55, emoji: '✨', nombre: { en: 'Nearest stars', es: 'Estrellas cercanas' }, dir: camDir(30, 25), datos: [
+    { en: '<b>How far is the nearest star?</b> Proxima Centauri is 4.24 light-years away (40 trillion km). Light takes 4 years and 3 months; Voyager 1 would need ~75,000 years.', es: '<b>¿Qué tan lejos está la estrella más cercana?</b> Proxima Centauri está a 4.24 años-luz (40 billones de km). La luz tarda 4 años y 3 meses; el Voyager 1 tardaría ~75,000 años.' },
+    { en: 'If the Sun were a soccer ball in Mexico, Earth would be a grain of sand 24 m away… and Proxima a walnut about 6,300 km away — farther than Honolulu.', es: 'Si el Sol fuera un balón de fútbol en León, la Tierra sería un grano de arena a 24 m… y Proxima una nuez a unos 6,300 km — más lejos que Honolulu.' },
+    { en: 'Most of our neighbors are small red dwarfs invisible to the naked eye. Sun-like stars are the minority.', es: 'La mayoría de nuestras vecinas son enanas rojas pequeñas, invisibles a simple vista. Las estrellas como el Sol son minoría.' },
+    { en: 'In 2025 astronomers confirmed four small rocky planets around Barnard’s Star, just 6 light-years away.', es: 'En 2025 se confirmaron cuatro pequeños planetas rocosos alrededor de la Estrella de Barnard, a solo 6 años-luz.' },
+    { en: 'The neighborhood is changing: Ross 248 is approaching and in ~36,000 years will become the nearest star to the Sun.', es: 'El vecindario cambia: Ross 248 se acerca y en ~36,000 años será la estrella más cercana al Sol.' },
+  ] },
+  { id: 'vecindario', z: 19.7, emoji: '🌟', nombre: { en: 'Stellar neighborhood', es: 'Vecindario estelar' }, dir: camDir(28, 15), datos: [
+    { en: 'Betelgeuse’s light left around 1478 — before Columbus reached America. If it exploded tonight, we wouldn’t find out for centuries.', es: 'La luz de Betelgeuse salió hacia 1478 — antes de que Colón llegara a América. Si explotara esta noche, no lo sabríamos en siglos.' },
+    { en: 'Our radio bubble: humanity’s oldest broadcasts have traveled ~100 light-years. Out here they are a whisper inside a tiny sphere of the galaxy.', es: 'Nuestra burbuja de radio: las transmisiones más antiguas de la humanidad han viajado ~100 años-luz. Aquí son un susurro dentro de una esfera diminuta de la galaxia.' },
+    { en: 'With the naked eye you can see about 9,000 stars across the whole sky — out of 100–400 billion in the Milky Way. Almost all of them are within a few thousand light-years.', es: 'A simple vista se ven unas 9,000 estrellas en todo el cielo — de 100 a 400 mil millones en la Vía Láctea. Casi todas están a unos pocos miles de años-luz.' },
+    { en: 'Polaris won’t always be the North Star: Earth’s axis wobbles like a top, and around the year 14,000 the pole will point near Vega.', es: 'Polaris no siempre será la Estrella Polar: el eje de la Tierra se bambolea como un trompo, y hacia el año 14,000 el polo apuntará cerca de Vega.' },
+  ] },
+  { id: 'galaxia', z: 21.3, emoji: '🌀', nombre: { en: 'Milky Way', es: 'Vía Láctea' }, dir: GAL_Y.clone().multiplyScalar(0.82).add(GAL_X.clone().multiplyScalar(0.57)).normalize(), datos: [
+    { en: 'The Sun orbits the galactic center at ~230 km/s (828,000 km/h). One lap takes ~230 million years: the last time we were here, the first dinosaurs were appearing.', es: 'El Sol orbita el centro galáctico a ~230 km/s (828,000 km/h). Una vuelta tarda ~230 millones de años: la última vez que estuvimos aquí, aparecían los primeros dinosaurios.' },
+    { en: 'At the center sits Sagittarius A*, a black hole of 4.3 million Suns, photographed for the first time in 2022.', es: 'En el centro está Sagitario A*, un agujero negro de 4.3 millones de soles, fotografiado por primera vez en 2022.' },
+    { en: 'ESA’s Gaia mission (retired in March 2025) mapped nearly 2 billion stars — still only about 1% of the galaxy.', es: 'La misión Gaia de la ESA (retirada en marzo de 2025) cartografió casi 2 mil millones de estrellas — apenas ~1 % de la galaxia.' },
+    { en: 'We live in a quiet suburb: the Orion Spur, about 26,700 light-years from the center. The galaxy shown is a scientific illustration — we have never photographed it from outside.', es: 'Vivimos en un suburbio tranquilo: el Brazo de Orión, a unos 26,700 años-luz del centro. La galaxia mostrada es una ilustración científica — nunca la hemos fotografiado desde afuera.' },
+  ] },
+  { id: 'grupo', z: 23.15, emoji: '🌌', nombre: { en: 'Local Group', es: 'Grupo Local' }, dir: camDir(35, 30), datos: [
+    { en: 'The light from Andromeda that reaches your eyes left 2.5 million years ago, when our ancestors were making the first stone tools.', es: 'La luz de Andrómeda que llega a tus ojos salió hace 2.5 millones de años, cuando nuestros ancestros fabricaban las primeras herramientas de piedra.' },
+    { en: 'Andromeda is approaching at ~110 km/s. Long assumed to hit us in 4.5 billion years, a 2025 study found only about a 50% chance of a merger within the next 10 billion years.', es: 'Andrómeda se acerca a ~110 km/s. Se creía que chocaría con nosotros en 4,500 millones de años; un estudio de 2025 encontró solo ~50 % de probabilidad de fusión en los próximos 10 mil millones de años.' },
+    { en: 'If your eyes could see faint light, Andromeda would look about six full Moons wide in the sky.', es: 'Si tus ojos captaran luz tenue, Andrómeda se vería del ancho de seis Lunas llenas en el cielo.' },
+    { en: 'The Local Group holds more than 80 galaxies, most of them dwarfs; the Milky Way and Andromeda dominate.', es: 'El Grupo Local tiene más de 80 galaxias, casi todas enanas; la Vía Láctea y Andrómeda dominan.' },
+  ] },
+  { id: 'laniakea', z: 25.0, emoji: '🕸️', nombre: { en: 'Laniakea & cosmic web', es: 'Laniakea y red cósmica' }, dir: camDir(30, 50), datos: [
+    { en: 'Galaxies are not scattered randomly: they form a cosmic web of filaments and walls around enormous voids. (The web drawn here is illustrative; real galaxies are placed at their measured positions.)', es: 'Las galaxias no están al azar: forman una red cósmica de filamentos y murallas alrededor de vacíos enormes. (La red dibujada es ilustrativa; las galaxias reales están en sus posiciones medidas.)' },
+    { en: 'Our supercluster, Laniakea, spans ~520 million light-years and ~100,000 galaxies, all flowing toward the Great Attractor.', es: 'Nuestro supercúmulo, Laniakea, mide ~520 millones de años-luz y tiene ~100,000 galaxias, todas fluyendo hacia el Gran Atractor.' },
+    { en: 'In 2024 astronomers found Porphyrion, the largest black-hole jets ever seen: 23 million light-years long — more than 200 Milky Ways end to end.', es: 'En 2024 se descubrió Porfirión, los chorros de agujero negro más grandes jamás vistos: 23 millones de años-luz — más de 200 Vías Lácteas en fila.' },
+    { en: 'On scales beyond ~300 million light-years, the universe looks the same everywhere. Astronomers call it the "End of Greatness".', es: 'A escalas mayores a ~300 millones de años-luz, el universo se ve igual en todas partes. Los astrónomos lo llaman "el fin de la grandeza".' },
+  ] },
+  { id: 'observable', z: 27.05, emoji: '🔭', nombre: { en: 'Observable universe', es: 'Universo observable' }, dir: camDir(25, 35), datos: [
+    { en: 'The observable universe is ~93 billion light-years across, even though it is only 13.8 billion years old: space kept stretching while the light traveled.', es: 'El universo observable mide ~93 mil millones de años-luz, aunque solo tiene 13,800 millones de años: el espacio siguió estirándose mientras la luz viajaba.' },
+    { en: 'If the observable universe were the size of Earth, the Milky Way would be about 14 m wide… and our planet about 1/500th the width of an atom.', es: 'Si el universo observable fuera del tamaño de la Tierra, la Vía Láctea mediría unos 14 m… y nuestro planeta, una quinientosava parte del ancho de un átomo.' },
+    { en: 'The farthest galaxy ever confirmed is MoM-z14 (JWST, 2025): we see it just 280 million years after the Big Bang.', es: 'La galaxia más lejana confirmada es MoM-z14 (JWST, 2025): la vemos apenas 280 millones de años después del Big Bang.' },
+    { en: 'You are at the center of your observable universe — and so is every observer, everywhere. It is a horizon, not an edge.', es: 'Estás en el centro de tu universo observable — igual que cualquier observador en cualquier lugar. Es un horizonte, no un borde.' },
+    { en: 'Open questions in 2026: DESI’s maps (2024–2025) hint that dark energy may be weakening over time, and the universe’s expansion rate still comes out different depending on how we measure it (the "Hubble tension").', es: 'Preguntas abiertas en 2026: los mapas de DESI (2024–2025) sugieren que la energía oscura podría estar debilitándose, y la tasa de expansión del universo sigue dando valores distintos según cómo se mida (la "tensión de Hubble").' },
+  ] },
+  { id: 'masalla', z: 27.75, emoji: '❓', nombre: { en: 'What lies beyond?', es: '¿Qué hay después?' }, dir: camDir(22, 60), datos: [
+    { en: 'Our observable bubble is just one of many: someone 80 billion light-years away would have their own, equally large and equally "central".', es: 'Nuestra burbuja observable es solo una de muchas: alguien a 80 mil millones de años-luz tendría la suya, igual de grande e igual de "central".' },
+    { en: 'The universe is not expanding "into" anything: distances between galaxies grow everywhere at once. It needs no outside.', es: 'El universo no se expande "hacia" ningún lugar: las distancias entre galaxias crecen en todas partes a la vez. No necesita un afuera.' },
+    { en: 'Read the panel on the right: it separates what is established, what is likely and what is still speculation.', es: 'Lee el panel de la derecha: separa lo comprobado, lo probable y lo que aún es especulación.' },
+  ] },
+];
+const GRUPOS = Object.fromEntries(PARADAS.map(p => [p.id, p]));
+
+const MAS_ALLA = [
+  ['ok', { en: 'It’s a horizon, not a wall', es: 'Es un horizonte, no un muro' },
+    { en: 'The edge is set by time: light from farther away hasn’t had 13.8 billion years’ worth of travel to reach us yet. There is no wall and no boundary — only the limit of what we can see.', es: 'El borde lo pone el tiempo: la luz de más lejos aún no ha tenido tiempo de llegar en 13,800 millones de años. No hay muro ni frontera — solo el límite de lo que podemos ver.' }],
+  ['ok', { en: 'The farthest light is a curtain', es: 'La luz más lejana es una cortina' },
+    { en: 'The cosmic microwave background was released 380,000 years after the Big Bang. Before that, the universe was an opaque fog, so no light can show us what is behind that curtain. Gravitational waves or neutrinos might someday.', es: 'El fondo cósmico de microondas se liberó 380,000 años después del Big Bang. Antes, el universo era una niebla opaca: ninguna luz puede mostrarnos qué hay detrás de esa cortina. Quizá algún día las ondas gravitacionales o los neutrinos.' }],
+  ['prob', { en: 'Most likely: more universe', es: 'Lo más probable: más universo' },
+    { en: 'Measurements of the geometry of space find it flat to better than 1%. That strongly suggests the universe continues far beyond our horizon — much larger than what we see, possibly infinite — filled with the same kinds of galaxies.', es: 'Las mediciones de la geometría del espacio lo encuentran plano con un margen menor al 1 %. Eso sugiere que el universo continúa mucho más allá de nuestro horizonte — mucho más grande de lo que vemos, quizá infinito — lleno del mismo tipo de galaxias.' }],
+  ['ok', { en: 'Forever out of reach', es: 'Fuera de alcance para siempre' },
+    { en: 'Because the expansion is accelerating, galaxies now beyond ~16.6 billion light-years will never receive a message we send today. In the far future (hundreds of billions of years), every galaxy beyond our merged Local Group will fade from view.', es: 'Como la expansión se acelera, las galaxias que hoy están a más de ~16,600 millones de años-luz nunca recibirán un mensaje que enviemos hoy. En el futuro lejano (cientos de miles de millones de años), toda galaxia más allá de nuestro Grupo Local fusionado desaparecerá de la vista.' }],
+  ['ok', { en: 'Expanding into what? Nothing', es: '¿Se expande hacia qué? Hacia nada' },
+    { en: 'Expansion means that distances between galaxies grow everywhere at once. It does not require an "outside" or a center — every observer sees all distant galaxies receding.', es: 'La expansión significa que las distancias entre galaxias crecen en todas partes a la vez. No requiere un "afuera" ni un centro — cualquier observador ve que todas las galaxias lejanas se alejan.' }],
+  ['esp', { en: 'The multiverse', es: 'El multiverso' },
+    { en: 'Some versions of cosmic inflation predict that our universe is one bubble among countless others, maybe with different laws of physics. It is a fascinating idea, but there is no observational evidence for it yet.', es: 'Algunas versiones de la inflación cósmica predicen que nuestro universo es una burbuja entre incontables otras, quizá con leyes físicas distintas. Es una idea fascinante, pero aún no hay evidencia observacional.' }],
+  ['esp', { en: 'What we still don’t know', es: 'Lo que aún no sabemos' },
+    { en: 'About 95% of the universe is dark energy (~68%) and dark matter (~27%), and we don’t know what either one is. Every star, planet and person is made of the remaining ~5%.', es: 'Cerca del 95 % del universo es energía oscura (~68 %) y materia oscura (~27 %), y no sabemos qué es ninguna de las dos. Cada estrella, planeta y persona está hecha del ~5 % restante.' }],
+];
+
+/* ============================================================
+   9. TAMAÑOS PARA EL COMPARADOR (diámetros, o largo si es una estructura)
+   ============================================================ */
+const TAMANOS = [
+  ['t_luna', { en: 'the Moon', es: 'la Luna' }, 3.4748e6], ['t_tierra', { en: 'Earth', es: 'la Tierra' }, 1.2742e7], ['t_jupiter', { en: 'Jupiter', es: 'Júpiter' }, 1.3982e8],
+  ['t_sol', { en: 'the Sun', es: 'el Sol' }, 2 * R_SOL], ['t_sirio', { en: 'Sirius A', es: 'Sirio A' }, 2 * 1.711 * R_SOL], ['t_arturo', { en: 'Arcturus', es: 'Arturo' }, 2 * 25.4 * R_SOL],
+  ['t_aldeb', { en: 'Aldebaran', es: 'Aldebarán' }, 2 * 44.1 * R_SOL], ['t_rigel', 'Rigel', 2 * 78.9 * R_SOL], ['t_antares', 'Antares', 2 * 680 * R_SOL],
+  ['t_betel', 'Betelgeuse', 2 * 764 * R_SOL], ['t_uysct', 'UY Scuti', 2 * 909 * R_SOL], ['t_st218', 'Stephenson 2-18', 2 * 2150 * R_SOL],
+  ['t_sgra', { en: 'Sagittarius A* (event horizon)', es: 'Sagitario A* (horizonte de eventos)' }, 2.54e10], ['t_m87', { en: 'M87* (event horizon)', es: 'M87* (horizonte de eventos)' }, 3.84e13],
+  ['t_ton', { en: 'TON 618 (event horizon)', es: 'TON 618 (horizonte de eventos)' }, 2.4e14], ['t_neptuno', { en: 'Neptune’s orbit', es: 'la órbita de Neptuno' }, 60.1 * AU],
+  ['t_helio', { en: 'the heliosphere', es: 'la heliosfera' }, 240 * AU], ['t_oort', { en: 'the Oort Cloud', es: 'la Nube de Oort' }, 2e5 * AU],
+  ['t_orion', { en: 'the Orion Nebula', es: 'la Nebulosa de Orión' }, 24 * LY], ['t_lmc', { en: 'the Large Magellanic Cloud', es: 'la Gran Nube de Magallanes' }, 32200 * LY],
+  ['t_mw', { en: 'the Milky Way', es: 'la Vía Láctea' }, 1e5 * LY], ['t_and', { en: 'Andromeda', es: 'Andrómeda' }, 152000 * LY],
+  ['t_grupo', { en: 'the Local Group', es: 'el Grupo Local' }, 10e6 * LY], ['t_alcy', { en: 'Alcyoneus (radio galaxy)', es: 'Alcioneo (radiogalaxia)' }, 16.3e6 * LY],
+  ['t_porf', { en: 'Porphyrion (black-hole jets)', es: 'Porfirión (chorros de agujero negro)' }, 23e6 * LY, true], ['t_bootes', { en: 'the Boötes Void', es: 'el Vacío de Boötes' }, 330e6 * LY],
+  ['t_lani', { en: 'Laniakea', es: 'Laniakea' }, 520e6 * LY], ['t_sloan', { en: 'the Sloan Great Wall', es: 'la Gran Muralla Sloan' }, 1.37e9 * LY, true],
+  ['t_hcb', { en: 'the Hercules–Corona Borealis Great Wall', es: 'la Gran Muralla de Hércules–Corona Boreal' }, 10e9 * LY, true],
+  ['t_obs', { en: 'the observable universe', es: 'el universo observable' }, 93e9 * LY],
+].map(([id, nombre, d, largo]) => ({ id, nombre, d, largo: !!largo }));
+
+/* ============================================================
+   10. ENFOQUE, ESCALA Y VUELOS
+   ============================================================ */
+let zoom = 9.15, zoomObj = zoom;                // log10(altura visible en m)
+let U = Math.pow(10, zoom) / K_VISTA;          // metros por unidad de escena
+const foco = V3();
+let focoManual = null;                         // objeto enfocado a mano
+let vuelo = null;
+
+function focoAuto(z, dest = V3()) {
+  dest.copy(POS_TIERRA).multiplyScalar(1 - suave(10.9, 11.8, z));
+  const g = suave(20.2, 21.0, z) * (1 - suave(23.0, 24.5, z));
+  return dest.lerp(CENTRO_GAL, g);
+}
+const _fa = V3();
+function calcularFoco(z, dest) {
+  focoAuto(z, dest);
+  if (!focoManual) return dest;
+  const dm = focoManual.pos.distanceTo(dest);
+  if (dm < 1) return dest.copy(focoManual.pos);
+  const lg = Math.log10(dm);
+  const w = 1 - suave(lg + 0.1, lg + 0.9, z);
+  if (w < 0.001 && !vuelo) focoManual = null;
+  return dest.lerp(focoManual ? focoManual.pos : dest, w);
+}
+function zMinActual() { return focoManual && focoManual.radio ? Math.max(6.3, Math.log10(focoManual.radio * 1.8)) : Z_MIN; }
+
+function zVueloDe(o) {
+  if (o.zVuelo) return o.zVuelo;
+  if (o.cuerpo === 'galaxia' || o.cuerpo === 'cumulo') return Math.log10(o.radio * 2 * 1.9);
+  if (o.esEstrella) return Math.log10(Math.max(o.radio, R_SOL) * 10);   // cabe la estrella y el Sol fantasma
+  if (o.radio) return Math.log10(o.radio * 2 * 4);
+  return zoom;
+}
+
+// Vuelo "aleja – desplaza – acerca": la cámara sube lo suficiente para que el desplazamiento quepa en pantalla
+function volarA({ z, destino, dir = null, obj = null }) {
+  const desde = foco.clone();
+  const hasta = destino.clone();
+  const d = desde.distanceTo(hasta);
+  const pico = Math.max(zoom, z, d > 1 ? Math.log10(d) + 0.35 : 0);
+  const L1 = pico - zoom, L2 = pico - z, Lm = d > 1 ? 0.7 : 0;
+  const total = L1 + Lm + L2;
+  vuelo = { t0: performance.now() / 1000, dur: clamp(0.9 + total * 0.33, 1.0, 7.5), zA: zoom, zB: z, pico, L1, Lm, L2, total, desde, hasta, obj,
+    dirA: camara.position.clone().normalize(), dirB: dir ? dir.clone().normalize() : null };
+  if (obj) focoManual = null;
+  controles.autoRotate = !!tour;
+}
+function pasoVuelo() {
+  if (!vuelo) return false;
+  let s = (performance.now() / 1000 - vuelo.t0) / vuelo.dur;
+  const fin = s >= 1; s = Math.min(1, s);
+  const e = s < 0.5 ? 4 * s * s * s : 1 - Math.pow(-2 * s + 2, 3) / 2;
+  const u = vuelo.total * e;
+  if (vuelo.total < 1e-6) { zoom = vuelo.zB; foco.copy(vuelo.hasta); }
+  else if (u < vuelo.L1) { zoom = vuelo.zA + u; foco.copy(vuelo.desde); }
+  else if (u < vuelo.L1 + vuelo.Lm) { zoom = vuelo.pico; const k = (u - vuelo.L1) / vuelo.Lm; foco.copy(vuelo.desde).lerp(vuelo.hasta, k * k * (3 - 2 * k)); }
+  else { zoom = vuelo.pico - (u - vuelo.L1 - vuelo.Lm); foco.copy(vuelo.hasta); }
+  if (vuelo.dirB) { const d = vuelo.dirA.clone().lerp(vuelo.dirB, e).normalize(); camara.position.copy(d.multiplyScalar(D_CAM)); }
+  zoomObj = zoom;
+  if (fin) { zoom = zoomObj = vuelo.zB; if (vuelo.obj) focoManual = vuelo.obj; vuelo = null; }
+  return true;
+}
+function irAParada(p) {
+  const destino = focoAuto(p.z, V3());
+  volarA({ z: p.z, destino, dir: p.dir });
+  focoManual = null;
+}
+
+/* ============================================================
+   11. ACTUALIZACIÓN POR CUADRO
+   ============================================================ */
+const rel = V3();
+let pxPorUnidad = window.innerHeight / (2 * Math.tan(FOV / 2 * DEG));
+
+function actualizarEscena() {
+  U = Math.pow(10, zoom) / K_VISTA;
+  // Fondo estelar: siempre "en el infinito", centrado en la cámara
+  const aF = ventana(zoom, CAPAS.fondo);
+  fondo.p.visible = aF > 0.01; fondo.m.opacity = 0.85 * aF; fondo.p.position.copy(camara.position);
+  // Luz del Sol
+  rel.copy(foco).negate().divideScalar(U); luzSol.position.copy(rel);
+
+  for (const o of OBJ) {
+    let a = ventana(zoom, o.v);
+    if (o === focoManual || (vuelo && vuelo.obj === o)) a = 1;
+    if (a < 0.004) { if (o.g.visible) { o.g.visible = false; if (o.etq) o.etq.visible = false; } o.vis = 0; continue; }
+    rel.copy(o.pos).sub(foco).divideScalar(U);
+    const dCam = rel.distanceTo(camara.position);
+    const ext = o.radio / U;
+    if (dCam - ext > LIM_DIST) { o.g.visible = false; if (o.etq) o.etq.visible = false; o.vis = 0; continue; }
+    o.g.visible = true; o.g.position.copy(rel);
+    let px = 0;
+    if (o.malla) {
+      o.malla.scale.setScalar(ext);
+      px = ext / Math.max(dCam, 1e-6) * pxPorUnidad;
+      if (o.brillo) o.brillo.scale.setScalar(ext * (o.factorBrillo || 4.5));
+    }
+    for (const [m, base] of o.mats) m.opacity = base * a;
+    if (o.marca) { const am = a * (1 - suave(2.5, 6, px)); o.marca.visible = am > 0.01; o.marca.material.opacity = am; }
+    o.px = px; o.vis = a; o.dCam = dCam;
+    if (o.etq) {
+      if (o.etqDesp) o.etq.position.copy(o.etqDesp).divideScalar(U);
+      o.etqIn.style.opacity = a.toFixed(2);
+      const off = o.marca && px < 6 ? 8 : (o.malla && !o.sinMarcadorGrande ? Math.min(px, 400) + 4 : 0);
+      if (o.offPrev !== off) { o.etqIn.style.top = (-off) + 'px'; o.offPrev = off; }
+    }
+  }
+  for (const d of DECOR) {
+    const a = ventana(zoom, d.v);
+    if (a < 0.004) { d.obj.visible = false; continue; }
+    rel.copy(d.ancla).sub(foco).divideScalar(U);
+    if (rel.distanceTo(camara.position) - d.extRadio / U > LIM_DIST) { d.obj.visible = false; continue; }
+    d.obj.visible = true; d.obj.position.copy(rel); d.obj.scale.setScalar(d.unidad / U);
+    for (const [m, base] of d.mats) m.opacity = base * a;
+  }
+  // Comparación: órbitas y Sol fantasma alrededor de una estrella enfocada
+  const est = focoManual && focoManual.esEstrella ? focoManual : null;
+  const aC = est ? ventana(zoom, [8.6, 9.4, 13.4, 14.2]) : 0;
+  comparacion.visible = aC > 0.01; etqCompT.visible = etqCompJ.visible = comparacion.visible;
+  if (comparacion.visible) {
+    rel.copy(est.pos).sub(foco).divideScalar(U); comparacion.position.copy(rel); comparacion.scale.setScalar(AU / U);
+    matCompT.opacity = matCompJ.opacity = 0.8 * aC;
+    for (const e of [etqCompT, etqCompJ]) e.element.firstChild.style.opacity = aC.toFixed(2);
+  }
+  solFantasma.visible = etqFantasma.visible = false;
+  if (est && aC > 0.01) {
+    const rEst = est.radio / U, rSol = R_SOL / U;
+    const derecha = V3().crossVectors(V3(0, 1, 0), camara.position).normalize();
+    rel.copy(est.pos).sub(foco).divideScalar(U).add(derecha.multiplyScalar(rEst * 1.3 + rSol * 1.6 + 0.12));
+    solFantasma.position.copy(rel); solFantasma.scale.setScalar(rSol);
+    solFantasma.material.opacity = 0.85 * aC;
+    solFantasma.visible = etqFantasma.visible = true;
+    etqFantasma.element.firstChild.style.opacity = aC.toFixed(2);
+  }
+  // Resaltado
+  const sel = seleccionado && POR_ID[seleccionado];
+  resaltado.visible = !!(sel && sel.g.visible && sel.vis > 0.05 && (sel.marca || sel.malla) && !sel.sinMarcadorGrande && (sel.px || 0) < 30);
+  if (resaltado.visible) { resaltado.position.copy(sel.g.position); resaltado.scale.setScalar(0.035 + (sel.px || 0) * 2 / window.innerHeight * 0.93); }
+}
+
+// Etiquetas sin encimarse: prioridad primero, luego tamaño en pantalla
+const _p = V3();
+function ordenarEtiquetas() {
+  const cajas = [], W = window.innerWidth, H = window.innerHeight, cand = [];
+  for (const o of OBJ) {
+    if (!o.etq) continue;
+    if (!o.g.visible || o.vis < 0.08) { o.etq.visible = false; continue; }
+    o.etq.getWorldPosition(_p).project(camara);
+    if (_p.z > 1 || _p.z < -1 || Math.abs(_p.x) > 1.1 || Math.abs(_p.y) > 1.1) { o.etq.visible = false; continue; }
+    cand.push({ o, x: (_p.x + 1) / 2 * W, y: (1 - _p.y) / 2 * H, pri: o.id === seleccionado ? -1 : o.prioridad - (o.px > 8 ? 2 : 0) });
+  }
+  cand.sort((a, b) => a.pri - b.pri);
+  for (const c of cand) {
+    const w = (c.o.anchoEtq ||= (tx(c.o.nombre).length * 6.6 + 10)), h = 15, off = c.o.offPrev || 0;
+    const r = [c.x - w / 2, c.y - off - h - 2, c.x + w / 2, c.y - off];
+    const choca = cajas.some(b => r[0] < b[2] && r[2] > b[0] && r[1] < b[3] && r[3] > b[1]);
+    c.o.etq.visible = !choca;
+    if (!choca) cajas.push(r);
+  }
+}
+
+/* ============================================================
+   12. INTERFAZ: HUD, regla, datos curiosos
+   ============================================================ */
+const Z_R0 = 7.0, Z_R1 = 28.0;
+const pctZ = (z) => (z - Z_R0) / (Z_R1 - Z_R0) * 100;
+const pista = $('regla-pista');
+for (let e = 8; e <= 28; e += 2) { const d = document.createElement('div'); d.className = 'tick'; d.style.left = pctZ(e) + '%'; d.innerHTML = `10<sup>${e}</sup>`; pista.appendChild(d); }
+for (const p of PARADAS) {
+  const b = document.createElement('button'); b.className = 'parada'; b.textContent = p.emoji; b.style.left = pctZ(p.z) + '%'; b.dataset.parada = p.id;
+  b.addEventListener('click', (ev) => { ev.stopPropagation(); detenerTour(); irAParada(p); }); b.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+  pista.appendChild(b); p.boton = b;
+}
+let arrastrandoRegla = false;
+function zDesdeRegla(ev) { const r = pista.getBoundingClientRect(); return Z_R0 + clamp((ev.clientX - r.left) / r.width, 0, 1) * (Z_R1 - Z_R0); }
+pista.addEventListener('pointerdown', (ev) => { arrastrandoRegla = true; pista.setPointerCapture(ev.pointerId); detenerTour(); vuelo = null; zoomObj = clamp(zDesdeRegla(ev), zMinActual(), Z_MAX); });
+pista.addEventListener('pointermove', (ev) => { if (arrastrandoRegla) zoomObj = clamp(zDesdeRegla(ev), zMinActual(), Z_MAX); });
+pista.addEventListener('pointerup', () => { arrastrandoRegla = false; });
+
+let paradaActual = null, idxDato = 0;
+function paradaCercana(z) { let mejor = PARADAS[0]; for (const p of PARADAS) if (Math.abs(p.z - z) < Math.abs(mejor.z - z)) mejor = p; return mejor; }
+function pintarDato() {
+  const p = paradaActual; if (!p) return;
+  $('cur-titulo-txt').textContent = `${t('curTitulo')} · ${p.emoji} ${tx(p.nombre)}`;
+  $('cur-texto').innerHTML = tx(p.datos[idxDato]);
+  $('cur-num').textContent = `${idxDato + 1} / ${p.datos.length}`;
+}
+$('cur-prev').addEventListener('click', () => { const n = paradaActual.datos.length; idxDato = (idxDato + n - 1) % n; pintarDato(); });
+$('cur-next').addEventListener('click', () => { idxDato = (idxDato + 1) % paradaActual.datos.length; pintarDato(); });
+$('cur-titulo').addEventListener('click', () => $('curiosidad').classList.toggle('cerrada'));
+
+let maCerradoManual = false, regionPrev = '';
+function actualizarHUD() {
+  const H = Math.pow(10, zoom);
+  $('vista-ancho').textContent = fmtDist(H);
+  $('vista-pot').innerHTML = `≈ 10<sup>${fmt(zoom, 1)}</sup> m`;
+  $('mano').innerHTML = t('mano')(fmtDist(H / 20));
+  $('regla-cursor').style.left = pctZ(zoom) + '%';
+  const manual = focoManual && GRUPOS[focoManual.grupo] ? focoManual : null;
+  const p = manual ? GRUPOS[manual.grupo] : paradaCercana(zoom);
+  if (p !== paradaActual) {
+    paradaActual = p; idxDato = 0; pintarDato();
+    for (const q of PARADAS) q.boton.classList.toggle('activo', q === p);
+  }
+  const clave = (manual ? manual.id : '') + p.id + idioma;
+  if (clave !== regionPrev) {
+    regionPrev = clave;
+    const nombre = manual ? `🎯 ${nombreDe(manual)}` : `${p.emoji} ${tx(p.nombre)}`;
+    $('region').innerHTML = `${t('region')} · <b>${nombre}</b>`;
+    $('regla-nombre').innerHTML = `<b>${nombre}</b>`;
+  }
+  const enMasAlla = zoom > 27.4;
+  if (!enMasAlla) maCerradoManual = false;
+  const mostrarMA = enMasAlla && !maCerradoManual;
+  if (mostrarMA !== $('mas-alla').classList.contains('visible')) {
+    $('mas-alla').classList.toggle('visible', mostrarMA);
+    if (mostrarMA) cerrarPanel();
+  }
+}
+function pintarMasAlla() {
+  $('ma-chip').textContent = t('maChip'); $('ma-titulo').textContent = t('maTitulo'); $('ma-intro').textContent = t('maIntro');
+  $('ma-secciones').innerHTML = MAS_ALLA.map(([n, tit, txt]) => `<div class="ma-sec"><h4>${tx(tit)}<span class="nivel ${n}">${t('nivel')[n]}</span></h4><p>${tx(txt)}</p></div>`).join('');
+}
+$('ma-cerrar').addEventListener('click', () => { maCerradoManual = true; $('mas-alla').classList.remove('visible'); });
+
+/* ============================================================
+   13. PANEL DE INFORMACIÓN
+   ============================================================ */
+let seleccionado = null;
+const statsHTML = (filas) => filas.map(([k, v]) => `<div class="stat"><span class="stat-k">${k}</span><span class="stat-v">${v}</span></div>`).join('');
+const nombreDe = (o) => tx(o.nombre);
+
+function datosObjeto(o) {
+  const filas = [];
+  let ctx = '';
+  if (!o.sinDistancia && o.id !== 'tierra') {
+    const d = o.pos.distanceTo(POS_TIERRA);
+    filas.push([o.cosmologico ? t('kDistHoy') : t('kDistTierra'), fmtDistLarga(d)]);
+    const anios = o.ltt || d / C_LUZ / 31557600;
+    filas.push(o.ltt ? [t('kLuzViaje'), fmtAnios(o.ltt)] : [t('kTiempoLuz'), fmtTiempo(d / C_LUZ)]);
+    if (!o.cosmologico && d > 1e9) filas.push([t('kVoyager'), fmtTiempo(d / V_VOYAGER)]);
+    ctx = contextoLuz(anios);
+  }
+  const diam = o.diam || (o.radio && o.cuerpo !== 'cascaron' ? 2 * o.radio : 0);
+  if (diam) {
+    filas.push([o.id === 'sgra' || o.id === 'ton618' ? (idioma === 'es' ? 'Horizonte de eventos' : 'Event horizon') : t('kDiam'), fmtDistLarga(diam)]);
+    if (o.esEstrella) filas.push([t('kTamSol'), t('xSol')(fmtMax(diam / (2 * R_SOL), 2))]);
+    else if (o.planeta || o.id === 'luna') filas.push([t('kTamTierra'), t('xTierra')(fmtMax(diam / (2 * R_TIERRA), 2))]);
+  }
+  if (o.stats) filas.push(...tx(o.stats));
+  return { filas, ctx };
+}
+function renderizarPanel() {
+  const o = POR_ID[seleccionado]; if (!o) return;
+  const { filas, ctx } = datosObjeto(o);
+  $('info-tipo').textContent = tx(o.tipo) || '';
+  $('info-nombre').textContent = nombreDe(o);
+  $('info-stats').innerHTML = statsHTML(filas);
+  $('info-dato').textContent = tx(o.dato) || '';
+  $('info-ctx').textContent = ctx;
+  const btns = [];
+  if (!o.sinDistancia || o.cuerpo === 'cascaron') btns.push(`<button class="btn-grande" id="btn-volar">${t('btnVolar')}</button>`);
+  if (o.comparable !== false && !o.sinDistancia) btns.push(`<button id="btn-dist-aqui">${t('btnDist')}</button>`);
+  if (tamDeObjeto(o)) btns.push(`<button id="btn-cmp-aqui">${t('btnComparar')}</button>`);
+  $('info-extra').innerHTML = btns.join('');
+  $('btn-volar')?.addEventListener('click', () => { detenerTour(); volarAObjeto(o); });
+  $('btn-dist-aqui')?.addEventListener('click', () => abrirComparador('dist', o.id));
+  $('btn-cmp-aqui')?.addEventListener('click', () => abrirComparador('tam', tamDeObjeto(o).id));
+}
+function volarAObjeto(o) {
+  if (o.cuerpo === 'cascaron' && o.sinDistancia) { volarA({ z: Math.log10(o.radio * 3), destino: o.pos.clone() }); return; }
+  let z = zVueloDe(o);
+  const dAuto = o.pos.distanceTo(focoAuto(z, V3()));
+  if (dAuto > 1) z = Math.min(z, Math.log10(dAuto) + 0.05);
+  volarA({ z, destino: o.pos.clone(), obj: o });
+}
+function seleccionar(id) {
+  seleccionado = id; renderizarPanel(); $('info').classList.add('visible');
+  if ($('mas-alla').classList.contains('visible')) { maCerradoManual = true; $('mas-alla').classList.remove('visible'); }
+}
+function cerrarPanel() { seleccionado = null; $('info').classList.remove('visible'); }
+$('info-cerrar').addEventListener('click', cerrarPanel);
+
+/* ============================================================
+   14. COMPARADOR DE TAMAÑOS Y DISTANCIAS
+   ============================================================ */
+let modoCmp = 'tam';
+const MAPA_TAM = { tierra: 't_tierra', luna: 't_luna', jupiter: 't_jupiter', sol: 't_sol', sirio: 't_sirio', arturo: 't_arturo', aldebaran: 't_aldeb', rigel: 't_rigel', antares: 't_antares',
+  betelgeuse: 't_betel', sgra: 't_sgra', m87: 't_m87', ton618: 't_ton', heliopausa: 't_helio', oort: 't_oort', orion: 't_orion', lmc: 't_lmc', viaLacteaG: 't_mw', andromeda: 't_and',
+  laniakea: 't_lani', bootes: 't_bootes', sloan: 't_sloan', borde: 't_obs' };
+function tamDeObjeto(o) { return TAMANOS.find(x => x.id === MAPA_TAM[o.id]) || null; }
+function llenarSelects() {
+  const a = $('cmp-a'), b = $('cmp-b'), va = a.value, vb = b.value;
+  if (modoCmp === 'tam') {
+    const op = TAMANOS.map(x => `<option value="${x.id}">${capital(tx(x.nombre))}</option>`).join('');
+    a.innerHTML = op; b.innerHTML = op;
+  } else {
+    const html = PARADAS.map(p => {
+      const items = OBJ.filter(o => o.grupo === p.id && o.comparable !== false && !o.sinDistancia && o.info !== false);
+      return items.length ? `<optgroup label="${p.emoji} ${tx(p.nombre)}">${items.map(o => `<option value="${o.id}">${nombreDe(o)}</option>`).join('')}</optgroup>` : '';
+    }).join('');
+    a.innerHTML = html; b.innerHTML = html;
+  }
+  if ([...a.options].some(o => o.value === va)) a.value = va;
+  if ([...b.options].some(o => o.value === vb)) b.value = vb;
+}
+const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+function abrirComparador(modo, idA, idB) {
+  modoCmp = modo;
+  $('tab-tam').classList.toggle('activo', modo === 'tam'); $('tab-dist').classList.toggle('activo', modo === 'dist');
+  llenarSelects();
+  const def = modo === 'tam' ? ['t_tierra', 't_sol'] : ['sol', 'proxima'];
+  $('cmp-a').value = idA || ($('cmp-a').dataset[modo] || def[0]);
+  $('cmp-b').value = idB || ($('cmp-b').dataset[modo] || def[1]);
+  if ($('cmp-a').value === $('cmp-b').value) $('cmp-b').value = idA === def[1] ? def[0] : def[1];
+  $('comparador').classList.add('visible');
+  pintarComparacion();
+}
+function pintarComparacion() {
+  const a = $('cmp-a'), b = $('cmp-b'); a.dataset[modoCmp] = a.value; b.dataset[modoCmp] = b.value;
+  const cv = $('cmp-canvas'), dpr = Math.min(window.devicePixelRatio, 2), W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W * dpr; cv.height = H * dpr; const g = cv.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
+  g.font = '12px "Segoe UI", system-ui, sans-serif'; g.textAlign = 'center';
+  if (modoCmp === 'tam') {
+    const A = TAMANOS.find(x => x.id === a.value), B = TAMANOS.find(x => x.id === b.value); if (!A || !B) return;
+    const [chico, grande] = A.d <= B.d ? [A, B] : [B, A];
+    const R = Math.min(H * 0.38, W * 0.27), r = R * chico.d / grande.d;
+    const cxG = W * 0.64, cy = H * 0.46, cxC = Math.max(135, Math.min(W * 0.3, cxG - R - Math.max(r, 9) - 30));
+    circuloCmp(g, cxG, cy, R, '#6ea8ff', grande.largo);
+    if (r >= 0.8) circuloCmp(g, cxC, cy, r, '#ffc864', chico.largo);
+    else { g.fillStyle = '#ffc864'; g.beginPath(); g.arc(cxC, cy, 1.6, 0, Math.PI * 2); g.fill(); g.strokeStyle = 'rgba(255,200,100,0.6)'; g.beginPath(); g.arc(cxC, cy, 9, 0, Math.PI * 2); g.stroke(); }
+    g.fillStyle = '#dde4f5'; g.fillText(capital(tx(grande.nombre)), cxG, cy + R + 18 > H - 6 ? H - 8 : cy + R + 18);
+    g.fillText(capital(tx(chico.nombre)), cxC, cy + Math.max(r, 9) + 18);
+    if (r < 0.8) { g.fillStyle = '#8b96b8'; g.fillText(`(${t('cmpInvis')})`, cxC, cy + 9 + 33); }
+    const ratio = grande.d / chico.d, html = [];
+    html.push(ratio < 1.05 ? t('cmpIgual')(capital(tx(A.nombre)), tx(B.nombre)) : t('cmpMayor')(capital(tx(grande.nombre)), fmtGrande(ratio), tx(chico.nombre)));
+    if (!grande.largo && !chico.largo && ratio >= 1.05) html.push(t('cmpCaben')(fmtGrande(ratio ** 3), tx(chico.nombre), tx(grande.nombre)));
+    html.push(t('cmpBalon')(tx(chico.nombre), fmtHumana(BALON * ratio), tx(grande.nombre)));
+    html.push(t('cmpBalon')(tx(grande.nombre), fmtHumana(BALON / ratio), tx(chico.nombre)));
+    $('cmp-res').innerHTML = html.map(h => `<p style="margin-bottom:6px">${h}</p>`).join('');
+  } else {
+    const A = POR_ID[a.value], B = POR_ID[b.value]; if (!A || !B) return;
+    const d = A.pos.distanceTo(B.pos);
+    // Dibujo: escala logarítmica de la distancia sobre la regla de potencias de diez
+    const x0 = 30, x1 = W - 30, y = H * 0.5, lg = Math.log10(Math.max(d, 1));
+    g.strokeStyle = 'rgba(130,160,255,0.35)'; g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke();
+    const px = x0 + (x1 - x0) * clamp((lg - 6) / (27 - 6), 0, 1);
+    g.strokeStyle = '#6ea8ff'; g.lineWidth = 3; g.beginPath(); g.moveTo(x0, y); g.lineTo(px, y); g.stroke(); g.lineWidth = 1;
+    for (let e = 6; e <= 27; e += 3) { const xe = x0 + (x1 - x0) * (e - 6) / 21; g.fillStyle = '#56618a'; g.fillText(`10^${e} m`, xe, y + 22); g.fillRect(xe - 0.5, y - 4, 1, 8); }
+    g.fillStyle = '#ffc864'; g.beginPath(); g.arc(x0, y, 5, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#64d2ff'; g.beginPath(); g.arc(px, y, 5, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#dde4f5'; g.textAlign = 'left'; g.fillText(nombreDe(A), x0 - 4, y - 16); g.textAlign = 'right'; g.fillText(nombreDe(B), Math.max(px + 4, 140), y - 16);
+    g.textAlign = 'center'; g.font = '600 15px "Segoe UI", system-ui, sans-serif'; g.fillStyle = '#6ea8ff'; g.fillText(fmtDist(d), W / 2, H * 0.22);
+    const filas = [[t('dTotal'), `<b>${fmtDistLarga(d)}</b>`], [t('dLuz'), fmtTiempo(d / C_LUZ)], [t('dVoy'), fmtTiempo(d / V_VOYAGER)], [t('dAvion'), fmtTiempo(d / 250)], [t('dAuto'), fmtTiempo(d / 27.78)], [t('dPie'), fmtTiempo(d / 1.389)]];
+    $('cmp-res').innerHTML = statsHTML(filas) + `<p style="margin-top:10px">${t('dBalon')(fmtHumana(d * FACTOR_BALON))}</p><p style="margin-top:6px;font-size:11.5px;color:var(--text-dim)">${t('dNota')}</p>`;
+  }
+}
+function circuloCmp(g, x, y, r, color, largo) {
+  if (largo) { g.fillStyle = color + '55'; g.strokeStyle = color; g.fillRect(x - r, y - Math.max(1.5, r * 0.06), 2 * r, Math.max(3, r * 0.12)); g.strokeRect(x - r, y - Math.max(1.5, r * 0.06), 2 * r, Math.max(3, r * 0.12)); return; }
+  const gr = g.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r); gr.addColorStop(0, color + 'ee'); gr.addColorStop(1, color + '44');
+  g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.strokeStyle = color; g.stroke();
+}
+$('btn-comparar').addEventListener('click', () => abrirComparador(modoCmp));
+$('cmp-cerrar').addEventListener('click', () => $('comparador').classList.remove('visible'));
+$('tab-tam').addEventListener('click', () => abrirComparador('tam'));
+$('tab-dist').addEventListener('click', () => abrirComparador('dist'));
+$('cmp-a').addEventListener('change', pintarComparacion);
+$('cmp-b').addEventListener('change', pintarComparacion);
+
+/* ============================================================
+   15. RECORRIDO GUIADO
+   ============================================================ */
+let tour = null;
+function iniciarTour() {
+  tour = { i: 0, t: 0, fase: 'vuelo' }; $('btn-tour').textContent = t('tourStop'); $('btn-tour').classList.add('activo');
+  cerrarPanel(); irAParada(PARADAS[0]); controles.autoRotate = true;
+}
+function detenerTour() {
+  if (!tour) return; tour = null; $('btn-tour').textContent = t('tour'); $('btn-tour').classList.remove('activo'); controles.autoRotate = false;
+}
+function pasoTour(dt) {
+  if (!tour || vuelo) return;
+  tour.t += dt;
+  if (tour.t > 6.5 && idxDato === 0 && paradaActual.datos.length > 1) { idxDato = 1; pintarDato(); }
+  if (tour.t > 13) {
+    tour.i++; tour.t = 0;
+    if (tour.i >= PARADAS.length) { detenerTour(); return; }
+    irAParada(PARADAS[tour.i]);
+  }
+}
+$('btn-tour').addEventListener('click', () => { if (tour) detenerTour(); else iniciarTour(); });
+
+/* ============================================================
+   16. ENTRADA: rueda, pellizco, teclado, selección
+   ============================================================ */
+const lienzoGL = renderer.domElement;
+lienzoGL.addEventListener('wheel', (ev) => {
+  ev.preventDefault(); detenerTour();
+  if (vuelo) { zoomObj = zoom; vuelo = null; }
+  const paso = clamp(ev.deltaY * (ev.deltaMode === 1 ? 33 : 1), -150, 150) * 0.0016 * (ev.shiftKey ? 4 : 1);
+  zoomObj = clamp(zoomObj + paso, zMinActual(), Z_MAX);
+}, { passive: false });
+const toques = new Map(); let distPellizco = 0;
+lienzoGL.addEventListener('pointerdown', (ev) => { toques.set(ev.pointerId, [ev.clientX, ev.clientY]); if (toques.size === 2) { const [p, q] = [...toques.values()]; distPellizco = Math.hypot(p[0] - q[0], p[1] - q[1]); } });
+lienzoGL.addEventListener('pointermove', (ev) => {
+  if (!toques.has(ev.pointerId)) return; toques.set(ev.pointerId, [ev.clientX, ev.clientY]);
+  if (toques.size === 2) { const [p, q] = [...toques.values()], d = Math.hypot(p[0] - q[0], p[1] - q[1]);
+    if (distPellizco > 0 && d > 0) { detenerTour(); vuelo = null; zoomObj = clamp(zoomObj - Math.log10(d / distPellizco) * 2.2, zMinActual(), Z_MAX); } distPellizco = d; }
+});
+const soltar = (ev) => { toques.delete(ev.pointerId); distPellizco = 0; };
+lienzoGL.addEventListener('pointerup', soltar); lienzoGL.addEventListener('pointercancel', soltar);
+controles.addEventListener('start', () => { if (tour) detenerTour(); });
+
+const tooltip = $('tooltip');
+function objetoBajoCursor(x, y) {
+  let mejor = null, dm = Infinity; const W = window.innerWidth, H = window.innerHeight;
+  for (const o of OBJ) {
+    if (!o.g.visible || o.vis < 0.2 || o.info === false || (!o.marca && !o.malla) || o.sinMarcadorGrande) continue;
+    _p.copy(o.g.position).project(camara); if (_p.z > 1) continue;
+    const sx = (_p.x + 1) / 2 * W, sy = (1 - _p.y) / 2 * H, d = Math.hypot(sx - x, sy - y), lim = Math.max(13, (o.px || 0));
+    if (d < lim && d - (o.px || 0) * 0.5 < dm) { dm = d - (o.px || 0) * 0.5; mejor = o; }
+  }
+  return mejor;
+}
+let posAbajo = null;
+lienzoGL.addEventListener('pointermove', (ev) => {
+  if (ev.pointerType === 'touch') return;
+  const o = objetoBajoCursor(ev.clientX, ev.clientY);
+  if (o) {
+    let h = `<b>${nombreDe(o)}</b><br>${tx(o.tipo) || ''}`;
+    if (!o.sinDistancia && o.id !== 'tierra') h += `<br>${t('ttDist')}: ${fmtDist(o.pos.distanceTo(POS_TIERRA))}`;
+    tooltip.innerHTML = h; tooltip.style.display = 'block';
+    tooltip.style.left = Math.min(ev.clientX + 16, window.innerWidth - 270) + 'px'; tooltip.style.top = Math.min(ev.clientY + 14, window.innerHeight - 90) + 'px';
+    lienzoGL.style.cursor = 'pointer';
+  } else { tooltip.style.display = 'none'; lienzoGL.style.cursor = ''; }
+});
+lienzoGL.addEventListener('pointerdown', (ev) => { posAbajo = [ev.clientX, ev.clientY]; });
+lienzoGL.addEventListener('pointerup', (ev) => {
+  if (!posAbajo) return; const dx = ev.clientX - posAbajo[0], dy = ev.clientY - posAbajo[1]; posAbajo = null;
+  if (dx * dx + dy * dy > 36 || toques.size > 0) return;
+  const o = objetoBajoCursor(ev.clientX, ev.clientY);
+  if (o) seleccionar(o.id); else cerrarPanel();
+});
+window.addEventListener('keydown', (ev) => {
+  if (ev.target.tagName === 'SELECT') return;
+  if (ev.key === 'Escape') { if ($('comparador').classList.contains('visible')) $('comparador').classList.remove('visible'); else cerrarPanel(); }
+  if (ev.key === '+' || ev.key === '=') { detenerTour(); vuelo = null; zoomObj = clamp(zoomObj - 0.25, zMinActual(), Z_MAX); }
+  if (ev.key === '-' || ev.key === '_') { detenerTour(); vuelo = null; zoomObj = clamp(zoomObj + 0.25, zMinActual(), Z_MAX); }
+});
+
+/* ============================================================
+   17. IDIOMA
+   ============================================================ */
+function aplicarIdioma(nuevo) {
+  idioma = nuevo;
+  try { localStorage.setItem('voyager-lang', nuevo); } catch (e) { /* sin almacenamiento */ }
+  document.documentElement.lang = nuevo; document.title = t('docTitle');
+  $('btn-en').classList.toggle('activo', nuevo === 'en'); $('btn-es').classList.toggle('activo', nuevo === 'es');
+  $('lnk-voyager').href = `index.html?lang=${nuevo}`; $('lnk-universo').href = `universo.html?lang=${nuevo}`; $('lnk-universo').textContent = t('modoUni');
+  $('vista-etq').textContent = t('vistaDe');
+  $('titulo').innerHTML = `${t('titulo')}<span class="sub">${t('sub')}</span>`;
+  $('btn-tour').textContent = tour ? t('tourStop') : t('tour'); $('btn-comparar').textContent = t('comparar');
+  $('cmp-titulo').textContent = t('cmpTitulo'); $('tab-tam').textContent = t('tabTam'); $('tab-dist').textContent = t('tabDist'); $('cmp-vs').textContent = t('vs');
+  const pista = $('pista'); if (pista) pista.textContent = t('pista');
+  $('err-titulo').textContent = t('errTitulo'); $('err-texto').innerHTML = t('errTexto');
+  for (const o of OBJ) if (o.etqIn) { o.etqIn.textContent = tx(o.nombre); o.anchoEtq = 0; }
+  for (const w of ETQ_SUELTAS) w.firstChild.textContent = t(w.firstChild.dataset.clave);
+  for (const p of PARADAS) p.boton.title = tx(p.nombre);
+  paradaActual = null; actualizarHUD(); pintarMasAlla();
+  if (seleccionado) renderizarPanel();
+  if ($('comparador').classList.contains('visible')) { llenarSelects(); pintarComparacion(); }
+}
+$('btn-en').addEventListener('click', () => aplicarIdioma('en'));
+$('btn-es').addEventListener('click', () => aplicarIdioma('es'));
+
+window.addEventListener('resize', () => {
+  camara.aspect = window.innerWidth / window.innerHeight; camara.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight); cssRenderer.setSize(window.innerWidth, window.innerHeight);
+  pxPorUnidad = window.innerHeight / (2 * Math.tan(FOV / 2 * DEG));
+  if ($('comparador').classList.contains('visible')) pintarComparacion();
+});
+setTimeout(() => { const p = $('pista'); if (!p) return; p.style.opacity = '0'; setTimeout(() => p.remove(), 1500); }, 10000);
+
+/* ============================================================
+   18. BUCLE PRINCIPAL
+   ============================================================ */
+let tPrev = performance.now() / 1000, cuadro = 0;
+function animar() {
+  requestAnimationFrame(animar);
+  const ahora = performance.now() / 1000, dt = Math.min(ahora - tPrev, 0.1); tPrev = ahora;
+  if (!pasoVuelo()) {
+    zoomObj = clamp(zoomObj, zMinActual(), Z_MAX);
+    zoom += (zoomObj - zoom) * Math.min(1, dt * 7);
+    if (Math.abs(zoomObj - zoom) < 1e-4) zoom = zoomObj;
+    calcularFoco(zoom, foco);
+  }
+  pasoTour(dt);
+  controles.update();
+  camara.position.setLength(D_CAM);
+  actualizarEscena();
+  if (cuadro % 3 === 0) ordenarEtiquetas();
+  if (cuadro % 5 === 0) actualizarHUD();
+  if (cuadro % 30 === 0 && seleccionado) renderizarPanel();
+  cuadro++;
+  renderer.render(escena, camara);
+  cssRenderer.render(escena, camara);
+}
+
+/* ============================================================
+   19. ARRANQUE: entrada cinematográfica desde la Tierra
+   ============================================================ */
+window.__app = true;
+aplicarIdioma(idioma);
+camara.position.copy(PARADAS[0].dir).multiplyScalar(D_CAM);
+zoom = zoomObj = 7.4; calcularFoco(zoom, foco);
+const parametroZ = (() => { try { return new URLSearchParams(location.search).get('parada'); } catch (e) { return null; } })();
+const paradaInicial = PARADAS.find(p => p.id === parametroZ) || PARADAS[0];
+setTimeout(() => irAParada(paradaInicial), 300);
+animar();
+// Depuración / pruebas automatizadas
+window.__uni = { PARADAS, POR_ID, irAParada, seleccionar, abrirComparador, estado: () => ({ zoom, foco: foco.toArray(), manual: focoManual?.id || null }), fijarZoom: (z) => { vuelo = null; zoom = zoomObj = z; } };
+</script>
+</body>
+</html>

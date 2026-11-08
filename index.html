@@ -44,6 +44,17 @@
     padding: 14px 18px; width: 318px; max-width: calc(100vw - 32px);
   }
   #hud h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.4px; padding-right: 66px; }
+  /* Selector de modo (Voyager / Universo a escala) */
+  #modos { display: flex; gap: 4px; margin-bottom: 10px; padding-right: 80px; }
+  #modos a {
+    flex: 1; text-align: center; text-decoration: none; color: var(--text-dim);
+    font-size: 11.5px; padding: 5px 6px; border-radius: 8px;
+    border: 1px solid rgba(130, 160, 255, 0.18); background: rgba(110, 140, 230, 0.08);
+    transition: background 0.15s, color 0.15s;
+  }
+  #modos a:hover { background: rgba(110, 140, 230, 0.25); color: var(--text); }
+  #modos a.activo { color: var(--text); background: rgba(110, 160, 255, 0.38); border-color: var(--accent); }
+  #hud h1.con-modos { padding-right: 0; }
   #sel-idioma { position: absolute; top: 12px; right: 14px; display: flex; gap: 4px; }
   #sel-idioma button { padding: 3px 8px; font-size: 11px; }
   #hud h1 .sub { display: block; font-size: 11px; font-weight: 400; color: var(--text-dim); margin-top: 2px; }
@@ -248,7 +259,11 @@
     <button id="btn-en" class="activo" title="English">EN</button>
     <button id="btn-es" title="Español">ES</button>
   </div>
-  <h1>Solar System · Voyager Tracker
+  <nav id="modos">
+    <a id="lnk-voyager" href="index.html" class="activo">🚀 Voyager</a>
+    <a id="lnk-universo" href="universo.html">🌌 Universe</a>
+  </nav>
+  <h1 class="con-modos">Solar System · Voyager Tracker
     <span class="sub">Orbits derived from Kepler’s laws · real spacecraft data</span>
   </h1>
   <div id="fecha">—</div>
@@ -395,6 +410,12 @@ const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
    `tx(campo)` resuelve un campo bilingüe {en, es} de los datos.
    ============================================================ */
 let idioma = 'en';
+// El idioma se comparte con el modo "Universo a escala" (?lang= o localStorage)
+try {
+  const q = new URLSearchParams(location.search).get('lang');
+  if (q === 'es' || q === 'en') idioma = q;
+  else { const g = localStorage.getItem('voyager-lang'); if (g === 'es' || g === 'en') idioma = g; }
+} catch (e) { /* sin almacenamiento disponible */ }
 const LOCALES = { en: 'en-US', es: 'es-MX' };
 const fmt = (n, d = 0) => n.toLocaleString(LOCALES[idioma], { maximumFractionDigits: d, minimumFractionDigits: d });
 const t = (clave) => TXT[idioma][clave];
@@ -546,7 +567,7 @@ const PLANETAS = [
 // distancia que crece linealmente con su velocidad heliocéntrica actual.
 const VOYAGERS = [
   { id: 'voyager1', nombre: 'Voyager 1', color: 0xffc864, css: 'voy1',
-    dist2026: 166.0,            // AU el 1-ene-2026
+    dist2026: 169.2,            // AU el 1-ene-2026 (≈ 1 día-luz de la Tierra el 18-nov-2026)
     velKms: 17.0,               // km/s heliocéntrica
     lonEcl: 255, latEcl: 35,    // rumbo: constelación de Ofiuco, ~35° sobre la eclíptica
     rumbo: { en: 'constellation Ophiuchus (35° above the ecliptic)', es: 'constelación de Ofiuco (35° sobre la eclíptica)' },
@@ -555,7 +576,7 @@ const VOYAGERS = [
     dato: { en: 'The most distant human-made object in history. It carries a Golden Record with music, sounds and greetings from Earth in 55 languages. On August 25, 2012 it became the first spacecraft to cross into interstellar space.',
             es: 'El objeto humano más lejano de la historia. Lleva un Disco de Oro con música, sonidos y saludos de la Tierra en 55 idiomas. El 25 de agosto de 2012 se convirtió en la primera nave en cruzar al espacio interestelar.' } },
   { id: 'voyager2', nombre: 'Voyager 2', color: 0x64d2ff, css: 'voy2',
-    dist2026: 138.0,
+    dist2026: 141.0,
     velKms: 15.4,
     lonEcl: 290, latEcl: -48,   // rumbo: constelación de Pavo, ~48° bajo la eclíptica
     rumbo: { en: 'constellation Pavo (48° below the ecliptic)', es: 'constelación de Pavo (48° bajo la eclíptica)' },
@@ -1367,6 +1388,10 @@ function aplicarIdioma(nuevo) {
   idioma = nuevo;
   document.documentElement.lang = nuevo;
   document.title = t('docTitle');
+  try { localStorage.setItem('voyager-lang', nuevo); } catch (e) { /* sin almacenamiento */ }
+  $('lnk-voyager').href = `index.html?lang=${nuevo}`;
+  $('lnk-universo').href = `universo.html?lang=${nuevo}`;
+  $('lnk-universo').textContent = nuevo === 'es' ? '🌌 Universo' : '🌌 Universe';
   $('btn-en').classList.toggle('activo', nuevo === 'en');
   $('btn-es').classList.toggle('activo', nuevo === 'es');
 
@@ -1539,6 +1564,7 @@ function animar() {
    ============================================================ */
 window.__app = true;
 actualizarBotonPlay();
+aplicarIdioma(idioma);   // aplica el idioma recordado (o el de ?lang=)
 camara.position.set(mapR(900), mapR(700), mapR(1400));
 irAVista('voyagers', 3.2);
 animar();

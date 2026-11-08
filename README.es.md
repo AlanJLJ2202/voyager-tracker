@@ -22,7 +22,7 @@
 
 La mayoría de los diagramas del sistema solar te mienten. No les queda alternativa: a escala real, si el Sol fuera un balón de fútbol, la Tierra sería un grano de arena a 24 metros, y las sondas Voyager estarían al otro lado de tu ciudad.
 
-Este proyecto se niega a aplanar esa verdad. Es un **único archivo HTML autocontenido** que renderiza el sistema solar en proporción real, deriva cada órbita planetaria de las **leyes de Kepler** (sin posiciones precalculadas) y ubica a la **Voyager 1 (~165+ AU, rumbo a Ofiuco)** y a la **Voyager 2 (~137+ AU, rumbo a Pavo)** usando sus velocidades heliocéntricas reales y sus trayectorias asintóticas — incluidas las asistencias gravitatorias que doblaron su camino en Júpiter, Saturno, Urano y Neptuno.
+Este proyecto se niega a aplanar esa verdad. Es un **único archivo HTML autocontenido** que renderiza el sistema solar en proporción real, deriva cada órbita planetaria de las **leyes de Kepler** (sin posiciones precalculadas) y ubica a la **Voyager 1 (~172 AU, rumbo a Ofiuco)** y a la **Voyager 2 (~144 AU, rumbo a Pavo)** usando sus velocidades heliocéntricas reales y sus trayectorias asintóticas — incluidas las asistencias gravitatorias que doblaron su camino en Júpiter, Saturno, Urano y Neptuno.
 
 El objetivo es simple y ambicioso: que cualquier persona — un estudiante de preparatoria, un reclutador, tú — pueda pasar cinco minutos dentro y salir *sintiendo* la escala del espacio y la magnitud de lo que lograron las misiones Voyager.
 
@@ -51,6 +51,23 @@ Lo que lo hace especial:
 
 ---
 
+## 🌌 Modo Universo a escala (`universo.html`)
+
+Un segundo modo, a un clic desde el panel superior izquierdo: **el universo en tus manos**. Un zoom continuo a lo largo de 21 potencias de diez — de la Tierra y la Luna al borde del universo observable y más allá — con cada objeto en su posición real y a su tamaño real.
+
+- 🔭 **11 paradas en una regla de potencias de diez** — Tierra y Luna, planetas interiores, sistema solar y Voyagers, Nube de Oort, estrellas cercanas, vecindario estelar, Vía Láctea, Grupo Local, Laniakea y la red cósmica, el universo observable y *qué hay después*
+- 🌍 **Posiciones reales** — planetas con el mismo motor kepleriano, la Luna en su posición y fase de hoy, la Tierra rotada según la hora sidérea, ~40 estrellas y ~20 galaxias ubicadas por su ascensión recta, declinación y distancia, y el universo lejano (TON 618, Earendel, GN-z11, JADES-GS-z14-0, MoM-z14) a distancias comóviles cosmológicas
+- 🎯 **Vuela a lo que quieras** — haz clic en una estrella como Betelgeuse y la cámara viaja hasta ella a escala real, con las órbitas de la Tierra y Júpiter y un Sol a escala dibujados al lado para comparar
+- ⚖️ **Comparador** — tamaños (de la Luna al universo observable, con "cuántos caben dentro" y analogías con un balón) y distancias entre dos objetos cualesquiera (tiempos para la luz, el Voyager 1, un avión, un auto y caminando)
+- 🕰️ **Contexto histórico de la luz** — para cada objeto, qué pasaba en la Tierra cuando salió la luz que ves de él
+- 💡 **Datos curiosos por escala** — más de 45 datos verificados, incluidos resultados recientes (Voyager 1 a un día-luz, los planetas de la Estrella de Barnard, la compañera de Betelgeuse, la probabilidad de fusión con Andrómeda de 2025, MoM-z14, DESI)
+- ❓ **Panel "¿Qué hay después?"** — horizontes, el fondo cósmico de microondas, el universo no observable y el multiverso, cada uno marcado como *comprobado*, *probable* o *especulativo*
+- ▶ **Recorrido guiado** — un viaje automático de la Tierra al borde de todo
+
+La estructura espiral de la Vía Láctea y la red cósmica son ilustraciones científicas (nunca hemos fotografiado nuestra galaxia desde afuera); los objetos con nombre están en sus posiciones medidas.
+
+---
+
 ## 🛠️ Construido Con
 
 | Tecnología | Rol |
@@ -68,7 +85,7 @@ Este proyecto fue construido con **[Claude Fable 5](https://www.anthropic.com/cl
 
 ## 🚀 Cómo Empezar
 
-Es un único archivo HTML autocontenido. Sin instalación, sin dependencias, sin paso de compilación.
+Dos archivos HTML autocontenidos (`index.html` para el rastreador Voyager y `universo.html` para el modo Universo a escala). Sin instalación, sin dependencias, sin paso de compilación.
 
 **Opción 1 — Simplemente ábrelo**
 
@@ -100,6 +117,7 @@ Luego abre `http://localhost:8000`.
 - **Referencia de efemérides** — [Sistema Horizons de NASA/JPL](https://ssd.jpl.nasa.gov/horizons/)
 - **Distancias, velocidades y trayectoria de las Voyager** — [NASA JPL Voyager Mission Status](https://voyager.jpl.nasa.gov/mission/status/)
 - **Cruces de la heliopausa** — anuncios de la NASA: Voyager 1 (25 ago 2012), Voyager 2 (5 nov 2018)
+- **Estrellas, galaxias y cosmología (modo Universo)** — posiciones de las coordenadas de catálogo SIMBAD/NED; distancias al universo lejano calculadas para ΛCDM plano con parámetros de Planck 2018 (H₀ = 67.7 km/s/Mpc, Ωm = 0.311); resultados recientes de NASA, ESA, NOIRLab y anuncios revisados por pares (2024–2026)
 - **Constantes físicas** — definiciones de la IAU (1 AU = 149,597,870.7 km; c = 299,792.458 km/s)
 
 El movimiento planetario se *deriva* de estos elementos resolviendo la ecuación de Kepler en tiempo de ejecución — ninguna posición está precalculada. Las posiciones de las Voyager usan sus velocidades heliocéntricas publicadas y sus direcciones asintóticas (Ofiuco, +35° de latitud eclíptica para la V1; Pavo, −48° para la V2), con trayectorias que pasan por las posiciones verdaderas de los planetas en cada fecha histórica de sobrevuelo.

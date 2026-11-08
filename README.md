@@ -14,7 +14,7 @@
 
 Most solar system diagrams lie to you. They have to — at true scale, if the Sun were a soccer ball, Earth would be a grain of sand 24 meters away, and the Voyager probes would be on the other side of your city.
 
-This project refuses to flatten that truth. It is a **single self-contained HTML file** that renders the solar system in real proportion, derives every planetary orbit from **Kepler's laws** (no hard-coded positions), and places **Voyager 1 (~165+ AU, toward Ophiuchus)** and **Voyager 2 (~137+ AU, toward Pavo)** using their real heliocentric velocities and asymptotic trajectories — including the gravity-assist flybys that bent their paths at Jupiter, Saturn, Uranus and Neptune.
+This project refuses to flatten that truth. It is a **single self-contained HTML file** that renders the solar system in real proportion, derives every planetary orbit from **Kepler's laws** (no hard-coded positions), and places **Voyager 1 (~172 AU, toward Ophiuchus)** and **Voyager 2 (~144 AU, toward Pavo)** using their real heliocentric velocities and asymptotic trajectories — including the gravity-assist flybys that bent their paths at Jupiter, Saturn, Uranus and Neptune.
 
 The goal is simple and ambitious: that anyone — a high-school student, a recruiter, you — can spend five minutes inside it and walk away *feeling* the scale of space and the magnitude of what the Voyager missions achieved.
 
@@ -43,6 +43,23 @@ What makes it special:
 
 ---
 
+## 🌌 Universe at Scale mode (`universo.html`)
+
+A second mode, one click away from the top-left panel: **the universe in your hands**. A single continuous zoom across 21 powers of ten — from the Earth and the Moon to the edge of the observable universe and beyond — with every object at its real position and real size.
+
+- 🔭 **11 stops on a powers-of-ten ruler** — Earth & Moon, inner planets, solar system & Voyagers, Oort Cloud, nearest stars, stellar neighborhood, Milky Way, Local Group, Laniakea & the cosmic web, the observable universe, and *what lies beyond*
+- 🌍 **Real positions** — planets from the same Kepler engine, the Moon at today's position and phase, Earth rotated to the current sidereal time, ~40 stars and ~20 galaxies placed from their right ascension, declination and distance, and the far universe (TON 618, Earendel, GN-z11, JADES-GS-z14-0, MoM-z14) at cosmological comoving distances
+- 🎯 **Fly to anything** — click a star such as Betelgeuse and the camera flies there at true scale, with Earth's and Jupiter's orbits and a to-scale Sun drawn beside it for comparison
+- ⚖️ **Comparator** — sizes (from the Moon to the observable universe, with "how many fit inside" and soccer-ball analogies) and distances between any two objects (light, Voyager 1, airliner, car and walking times)
+- 🕰️ **Lookback context** — for every object, what was happening on Earth when the light you see from it departed
+- 💡 **Curiosities per scale** — 45+ verified facts, including recent results (Voyager 1 at one light-day, Barnard's Star's planets, Betelgeuse's companion, the 2025 Andromeda merger odds, MoM-z14, DESI)
+- ❓ **"What lies beyond?" panel** — horizons, the CMB, the unobservable universe and the multiverse, each labeled *established*, *likely* or *speculative*
+- ▶ **Guided tour** — an automatic trip from Earth to the edge of everything
+
+The Milky Way's spiral structure and the cosmic web are scientific illustrations (we have never photographed our galaxy from outside); named objects are placed at their measured positions.
+
+---
+
 ## 🛠️ Built With
 
 | Technology | Role |
@@ -60,7 +77,7 @@ This project was built with **[Claude Fable 5](https://www.anthropic.com/claude/
 
 ## 🚀 Getting Started
 
-This is a single self-contained HTML file. No installation, no dependencies, no build step.
+Two self-contained HTML files (`index.html` for the Voyager tracker, `universo.html` for the Universe at Scale mode). No installation, no dependencies, no build step.
 
 **Option 1 — Just open it**
 
@@ -92,6 +109,7 @@ Then open `http://localhost:8000`.
 - **Ephemerides reference** — [NASA/JPL Horizons System](https://ssd.jpl.nasa.gov/horizons/)
 - **Voyager distances, velocities and trajectory** — [NASA JPL Voyager Mission Status](https://voyager.jpl.nasa.gov/mission/status/)
 - **Heliopause crossings** — NASA announcements: Voyager 1 (Aug 25, 2012), Voyager 2 (Nov 5, 2018)
+- **Stars, galaxies and cosmology (Universe mode)** — positions from SIMBAD/NED catalog coordinates; distances to the far universe computed for flat ΛCDM with Planck 2018 parameters (H₀ = 67.7 km/s/Mpc, Ωm = 0.311); recent results from NASA, ESA, NOIRLab and peer-reviewed announcements (2024–2026)
 - **Physical constants** — IAU definitions (1 AU = 149,597,870.7 km; c = 299,792.458 km/s)
 
 Planetary motion is *derived* from these elements through Kepler's equation at runtime — no positions are hard-coded. Voyager positions use their published heliocentric speeds and asymptotic directions (Ophiuchus, +35° ecliptic latitude for V1; Pavo, −48° for V2), with trajectories routed through the true planet positions on each historical flyby date.

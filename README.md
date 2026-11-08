@@ -54,6 +54,7 @@ A second mode, one click away from the top-left panel: **the universe in your ha
 - 🕰️ **Lookback context** — for every object, what was happening on Earth when the light you see from it departed
 - 💡 **Curiosities per scale** — 45+ verified facts, including recent results (Voyager 1 at one light-day, Barnard's Star's planets, Betelgeuse's companion, the 2025 Andromeda merger odds, MoM-z14, DESI)
 - ❓ **"What lies beyond?" panel** — horizons, the CMB, the unobservable universe and the multiverse, each labeled *established*, *likely* or *speculative*
+- 💡 **Light-journey simulation** — watch light cross an expanding universe (flat ΛCDM, Planck 2018): from the Coma Cluster, 3C 273, TON 618, Earendel, GN-z11, MoM-z14 or the CMB to us, or a radio message we send today. An animated "rubber ruler", a spacetime diagram with the Hubble sphere, live wavelength stretching (why JWST sees in infrared), and the three distances that matter: when the light left, the path it traveled, and where the object is now. It also shows why light from the farthest galaxies first moved *away* from us, and why galaxies beyond ~16.6 billion ly can never receive a message from us
 - ▶ **Guided tour** — an automatic trip from Earth to the edge of everything
 
 The Milky Way's spiral structure and the cosmic web are scientific illustrations (we have never photographed our galaxy from outside); named objects are placed at their measured positions.

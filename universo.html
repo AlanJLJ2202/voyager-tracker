@@ -203,6 +203,45 @@
   #pista { position: fixed; bottom: 150px; left: 50%; transform: translateX(-50%); z-index: 8; padding: 9px 18px; font-size: 12.5px; color: var(--text-dim); transition: opacity 1.2s; white-space: nowrap; }
   #load-error { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; text-align: center; background: var(--bg); color: var(--text-dim); padding: 30px; line-height: 1.7; }
 
+  /* ---- Simulación: el viaje de la luz ---- */
+  #luz {
+    position: fixed; top: 50%; left: 50%; z-index: 55; transform: translate(-50%, -50%) scale(0.97);
+    width: 1160px; max-width: calc(100vw - 24px); max-height: calc(100vh - 24px); overflow-y: auto;
+    padding: 18px 22px 16px; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+    background: rgba(8, 12, 24, 0.94);
+  }
+  #luz.visible { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+  #luz h2 { font-size: 19px; margin-bottom: 4px; padding-right: 30px; }
+  #luz-intro { font-size: 13px; color: #c3cce4; line-height: 1.55; margin-bottom: 10px; max-width: 900px; }
+  .luz-fila { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-bottom: 6px; }
+  .luz-fila .etq { font-size: 10.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; margin-right: 4px; min-width: 150px; }
+  .luz-fila button { font-size: 12px; padding: 4px 9px; }
+  #luz-cuerpo { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr); gap: 14px; margin-top: 8px; }
+  .luz-sub { font-size: 10.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; margin: 2px 0 4px; }
+  #luz-espacio, #luz-diagrama { width: 100%; display: block; border-radius: 10px; background: rgba(0, 0, 0, 0.38); }
+  #luz-espacio { height: 150px; margin-bottom: 8px; }
+  #luz-diagrama { height: 300px; }
+  #luz-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .luz-tile { background: rgba(110, 140, 230, 0.07); border: 1px solid rgba(130, 160, 255, 0.12); border-radius: 9px; padding: 7px 9px; }
+  .luz-tile .k { font-size: 10.5px; color: var(--text-dim); }
+  .luz-tile .v { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .luz-tile .v small { display: block; font-size: 10.5px; font-weight: 400; color: var(--text-dim); }
+  .muestra-color { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  #luz-narra { margin-top: 10px; font-size: 13px; line-height: 1.55; color: #c3cce4; min-height: 96px; border-left: 3px solid var(--accent); padding: 4px 0 4px 10px; }
+  #luz-narra b { color: var(--text); }
+  #luz-narra.alerta { border-color: var(--prob); }
+  #luz-narra.fin { border-color: var(--ok); }
+  .barra-luz { margin-top: 6px; font-size: 11.5px; }
+  .barra-luz .b { height: 8px; border-radius: 4px; margin-top: 2px; }
+  #luz-controles { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  #luz-slider { flex: 1; accent-color: var(--prob); }
+  #luz-play { width: 40px; }
+  #luz-modelo { font-size: 10.5px; color: #5d6886; margin-top: 8px; line-height: 1.45; }
+  @media (max-width: 860px) {
+    #luz-cuerpo { grid-template-columns: 1fr; }
+    #luz-diagrama { height: 240px; }
+    .luz-fila .etq { min-width: 0; width: 100%; }
+  }
   @media (max-width: 1250px) { #curiosidad { width: 290px; } }
   @media (max-width: 900px) {
     #info, #mas-alla { top: auto; bottom: 120px; max-height: 46vh; }
@@ -218,6 +257,8 @@
     .parada { width: 22px; height: 22px; font-size: 12px; line-height: 20px; }
     .tick { display: none; }
     #regla { padding: 8px 10px; }
+    #regla-nombre { display: none; }
+    #regla-fila { justify-content: flex-end; }
     #pista { display: none; }
     #info, #mas-alla { right: 12px; left: 12px; width: auto; max-width: none; }
   }
@@ -302,6 +343,34 @@
   <div id="cmp-res"></div>
 </div>
 
+<div id="luz" class="panel" role="dialog" aria-modal="true">
+  <button class="cerrar" id="luz-cerrar">✕</button>
+  <div class="chip" id="luz-chip">Simulation · expanding universe</div>
+  <h2 id="luz-titulo">How light travels in an expanding universe</h2>
+  <p id="luz-intro"></p>
+  <div class="luz-fila" id="luz-fila-llega"><span class="etq" id="luz-etq-llega"></span></div>
+  <div class="luz-fila" id="luz-fila-envio"><span class="etq" id="luz-etq-envio"></span></div>
+  <div id="luz-cuerpo">
+    <div>
+      <div class="luz-sub" id="luz-sub-esp"></div>
+      <canvas id="luz-espacio"></canvas>
+      <div class="luz-sub" id="luz-sub-diag"></div>
+      <canvas id="luz-diagrama"></canvas>
+    </div>
+    <div>
+      <div id="luz-stats"></div>
+      <div id="luz-narra"></div>
+    </div>
+  </div>
+  <div id="luz-controles">
+    <button id="luz-play">⏸</button>
+    <button id="luz-reinicio" title="Restart">↺</button>
+    <input type="range" id="luz-slider" min="0" max="1000" value="0" aria-label="Time">
+    <select id="luz-vel"><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option><option value="4">×4</option></select>
+  </div>
+  <p id="luz-modelo"></p>
+</div>
+
 <nav id="regla" class="panel">
   <div id="regla-pista">
     <div id="regla-linea"></div>
@@ -311,6 +380,7 @@
     <span id="regla-nombre"></span>
     <button id="btn-tour">▶ Tour</button>
     <button id="btn-comparar">⚖️ Compare</button>
+    <button id="btn-luz">💡 Light</button>
   </div>
 </nav>
 
@@ -404,6 +474,30 @@ const TXT = {
     errTitulo: 'Could not load the 3D library', errTexto: 'This app needs an internet connection to download Three.js from the CDN.<br>Check your connection and reload the page.',
     u: { millonKm: 'million km', al: 'light-years', mal: 'million light-years', gal: 'billion light-years', dias: 'days', anios: 'years', deAnios: 'years',
          millon: 'million', milmillones: 'billion', billon: 'trillion' },
+    lzBtn: '💡 Light', btnLuz: '💡 Watch its light travel', lzChip: 'Simulation · expanding universe', lzTitulo: 'How light travels in an expanding universe',
+    lzIntro: 'When you look at a distant galaxy you see old light. But while that light traveled, space kept stretching: the galaxy kept moving away and the light itself was stretched into longer waves. Pick a journey and watch it happen.',
+    lzEtqLlega: 'Light that reaches us', lzEtqEnvio: 'A message we send today',
+    lzSubEsp: 'Space at this instant · tick marks are glued to space and spread apart as it expands', lzSubDiag: 'Spacetime diagram · distance vs. time',
+    lzEjeX: 'distance from us (billion light-years)', lzEjeY: 'billion years after the Big Bang',
+    lzLlego: 'arrived ✓', lzLegLuz: 'light', lzLegHub: 'Hubble sphere', lzLegNos: 'us', lzAqui: '📍 Here', lzRegla: (x) => `one mark = ${x} today`,
+    lzEdad: 'Age of the universe', lzFuturo: (x) => `${x} from now`, lzViaje: 'The light has been traveling', lzDLuz: 'Light ↔ here', lzDGal: (n) => `${n} ↔ here`,
+    lzTam: 'Size of the universe', lzMenor: (n) => `${n}× smaller than today`, lzMayor: (n) => `${n}× larger than today`, lzHoy: 'today’s size',
+    lzOnda: 'Wavelength of the light', lzBandas: { uv: 'ultraviolet', vis: 'visible light', ir: 'infrared', micro: 'microwaves', radio: 'radio' }, lzReinicio: 'Restart',
+    lzModelo: 'Model: flat ΛCDM universe with Planck 2018 parameters (H₀ = 67.7 km/s/Mpc, 31% matter, 69% dark energy). Distances are "proper" distances: what a chain of rulers laid out at that instant would measure. Future scenarios assume dark energy stays constant.',
+    lzSale: (n, edad, d, f) => `The light leaves <b>${n}</b> ${edad} after the Big Bang. Right now the object is only <b>${d}</b> from the spot that will one day be the Milky Way, and the whole universe is ${f} times smaller than today.`,
+    lzCMB: (d) => `380,000 years after the Big Bang the universe cools enough to become transparent, and this light is set free. The gas that emits it is just <b>${d}</b> from the matter that will become us — yet its light will need 13.8 billion years to get here.`,
+    lzAleja: '⚠️ <b>Surprise: right now this light is getting FARTHER from us</b>, even though it is aimed straight at us. It is outside the Hubble sphere (dashed line), where the space between it and us stretches faster than light can cross it — like walking forward on a treadmill that runs backward even faster.',
+    lzAcerca: (d) => `The Hubble sphere has grown past the light: now it finally gains ground and its distance to us shrinks. Curious fact: every photon reaching us today was, at its farthest, about <b>${d}</b> from us — some 4 billion years after the Big Bang.`,
+    lzCerca: (n, de, hoy) => `At this distance expansion barely matters: when the light left <b>${n}</b> it was <b>${de}</b> away, and today it is <b>${hoy}</b>. The light simply crosses the gap. The strange effects show up at billions of light-years — try MoM-z14.`,
+    lzFinLlega: (n, viaje, de, hoy, nunca, l0, l1, extra) => `✅ <b>Arrival.</b> You see ${n} as it was <b>${viaje} ago</b>. When that light left, it was only <b>${de}</b> away; today it is <b>${hoy}</b> away. ${nunca ? 'Light it emits today will <b>never</b> reach us: it is beyond the cosmic event horizon.' : 'Light it emits today will still reach us someday.'} The light set off as ${l0} and arrives stretched to ${l1}${extra}.`,
+    lzExtraJWST: ' — that is why the James Webb telescope observes in infrared', lzExtraCMB: ': it now reaches us as microwaves',
+    lzBarraSalio: 'Distance when the light left', lzBarraCamino: 'Path the light traveled', lzBarraHoy: 'Distance today',
+    lzEnvia: (n, d) => `Today we send a radio message toward <b>${n}</b>, now <b>${d}</b> away. It flies at the speed of light… but space keeps stretching along the way.`,
+    lzCierra: 'The message is gaining on its target: the gap shrinks, even though the target keeps receding as space expands.',
+    lzCreceLlega: '⚠️ For now the gap is <b>growing</b>: the space between the message and its target stretches faster than light. As the Hubble sphere grows, the message will eventually start gaining ground.',
+    lzCreceNunca: (n, h) => `⚠️ The gap keeps <b>growing</b> — and it always will: ${n} is beyond the cosmic event horizon (~${h}). Accelerating expansion carries it away faster than our message can ever catch up.`,
+    lzFinEnvio: (n, dt, d0, d1) => `✅ <b>After ${dt}, the message finally arrives (${n}).</b> When it left, the target was ${d0} away; by the time it arrives, it is <b>${d1}</b> away — the trip took far longer than the starting distance suggested.`,
+    lzFinNunca: (n, d0, h) => `❌ <b>50 billion years later the message still hasn’t arrived — and it never will.</b> ${n} is ${d0} away today, beyond the cosmic event horizon (~${h}). About 95% of the galaxies we can see are already out of reach like this.`,
     kDistTierra: 'Distance from Earth', kDistHoy: 'Distance today (space expanded)', kTiempoLuz: 'Light-time from Earth', kLuzViaje: 'Its light traveled',
     kDiam: 'Diameter', kRadio: 'Radius', kVoyager: 'At Voyager 1 speed (17 km/s)', kTamSol: 'Size vs. the Sun', kTamTierra: 'Size vs. Earth',
     xSol: (n) => `${n}× the Sun`, xTierra: (n) => `${n}× Earth`,
@@ -447,6 +541,30 @@ const TXT = {
     errTitulo: 'No se pudo cargar la librería 3D', errTexto: 'Esta aplicación necesita conexión a internet para descargar Three.js desde el CDN.<br>Verifica tu conexión y recarga la página.',
     u: { millonKm: 'millones de km', al: 'años-luz', mal: 'millones de años-luz', gal: 'mil millones de años-luz', dias: 'días', anios: 'años', deAnios: 'de años',
          millon: 'millones', milmillones: 'mil millones', billon: 'billones' },
+    lzBtn: '💡 La luz', btnLuz: '💡 Ver el viaje de su luz', lzChip: 'Simulación · universo en expansión', lzTitulo: 'Cómo viaja la luz en un universo que se expande',
+    lzIntro: 'Cuando miras una galaxia lejana ves luz vieja. Pero mientras esa luz viajaba, el espacio siguió estirándose: la galaxia se siguió alejando y la propia luz se estiró en ondas más largas. Elige un viaje y obsérvalo.',
+    lzEtqLlega: 'Luz que nos llega', lzEtqEnvio: 'Un mensaje que enviamos hoy',
+    lzSubEsp: 'El espacio en este instante · las marcas están pegadas al espacio y se separan al expandirse', lzSubDiag: 'Diagrama espacio-tiempo · distancia vs. tiempo',
+    lzEjeX: 'distancia a nosotros (miles de millones de años-luz)', lzEjeY: 'miles de millones de años tras el Big Bang',
+    lzLlego: '¡llegó! ✓', lzLegLuz: 'luz', lzLegHub: 'Esfera de Hubble', lzLegNos: 'nosotros', lzAqui: '📍 Aquí', lzRegla: (x) => `una marca = ${x} hoy`,
+    lzEdad: 'Edad del universo', lzFuturo: (x) => `dentro de ${x}`, lzViaje: 'La luz lleva viajando', lzDLuz: 'Luz ↔ aquí', lzDGal: (n) => `${n} ↔ aquí`,
+    lzTam: 'Tamaño del universo', lzMenor: (n) => `${n} veces más chico que hoy`, lzMayor: (n) => `${n} veces más grande que hoy`, lzHoy: 'su tamaño actual',
+    lzOnda: 'Longitud de onda de la luz', lzBandas: { uv: 'ultravioleta', vis: 'luz visible', ir: 'infrarrojo', micro: 'microondas', radio: 'radio' }, lzReinicio: 'Reiniciar',
+    lzModelo: 'Modelo: universo ΛCDM plano con parámetros de Planck 2018 (H₀ = 67.7 km/s/Mpc, 31 % materia, 69 % energía oscura). Las distancias son "propias": lo que mediría una cadena de reglas tendida en ese instante. Los escenarios a futuro suponen que la energía oscura se mantiene constante.',
+    lzSale: (n, edad, d, f) => `La luz sale de <b>${n}</b> ${edad} después del Big Bang. En este momento el objeto está a solo <b>${d}</b> del lugar que un día será la Vía Láctea, y todo el universo es ${f} veces más chico que hoy.`,
+    lzCMB: (d) => `380,000 años después del Big Bang el universo se enfría lo suficiente para volverse transparente, y esta luz queda libre. El gas que la emite está a solo <b>${d}</b> de la materia que nos formará — y aun así su luz tardará 13,800 millones de años en llegar.`,
+    lzAleja: '⚠️ <b>Sorpresa: ahora mismo esta luz se está ALEJANDO de nosotros</b>, aunque viene directo hacia acá. Está fuera de la esfera de Hubble (línea punteada), donde el espacio entre ella y nosotros se estira más rápido de lo que la luz lo recorre — como caminar hacia adelante en una caminadora que corre hacia atrás todavía más rápido.',
+    lzAcerca: (d) => `La esfera de Hubble creció y rebasó a la luz: por fin gana terreno y su distancia a nosotros disminuye. Dato curioso: todo fotón que nos llega hoy estuvo, en su punto más lejano, a unos <b>${d}</b> de nosotros — unos 4 mil millones de años después del Big Bang.`,
+    lzCerca: (n, de, hoy) => `A esta distancia la expansión casi no importa: cuando la luz salió de <b>${n}</b> estaba a <b>${de}</b>, y hoy está a <b>${hoy}</b>. La luz simplemente cruza la distancia. Los efectos extraños aparecen a miles de millones de años-luz — prueba con MoM-z14.`,
+    lzFinLlega: (n, viaje, de, hoy, nunca, l0, l1, extra) => `✅ <b>Llegada.</b> Ves ${n} como era <b>hace ${viaje}</b>. Cuando salió esa luz estaba a solo <b>${de}</b>; hoy está a <b>${hoy}</b>. ${nunca ? 'La luz que emita hoy <b>nunca</b> nos llegará: está más allá del horizonte de eventos cósmico.' : 'La luz que emita hoy todavía nos llegará algún día.'} La luz salió como ${l0} y llega estirada a ${l1}${extra}.`,
+    lzExtraJWST: ' — por eso el telescopio James Webb observa en infrarrojo', lzExtraCMB: ': hoy nos llega como microondas',
+    lzBarraSalio: 'Distancia cuando salió la luz', lzBarraCamino: 'Camino que recorrió la luz', lzBarraHoy: 'Distancia hoy',
+    lzEnvia: (n, d) => `Hoy enviamos un mensaje de radio hacia <b>${n}</b>, que está a <b>${d}</b>. Viaja a la velocidad de la luz… pero el espacio se sigue estirando en el camino.`,
+    lzCierra: 'El mensaje le va ganando terreno a su destino: la distancia se reduce, aunque el destino se sigue alejando con la expansión.',
+    lzCreceLlega: '⚠️ Por ahora la distancia <b>crece</b>: el espacio entre el mensaje y su destino se estira más rápido que la luz. Conforme crece la esfera de Hubble, el mensaje acabará ganando terreno.',
+    lzCreceNunca: (n, h) => `⚠️ La distancia sigue <b>creciendo</b> — y siempre lo hará: ${n} está más allá del horizonte de eventos cósmico (~${h}). La expansión acelerada lo aleja más rápido de lo que nuestro mensaje podrá alcanzarlo jamás.`,
+    lzFinEnvio: (n, dt, d0, d1) => `✅ <b>Después de ${dt}, el mensaje por fin llega (${n}).</b> Cuando salió, el destino estaba a ${d0}; cuando por fin llega, está a <b>${d1}</b> — el viaje tardó mucho más de lo que sugería la distancia inicial.`,
+    lzFinNunca: (n, d0, h) => `❌ <b>50 mil millones de años después, el mensaje sigue sin llegar — y nunca llegará.</b> ${n} está hoy a ${d0}, más allá del horizonte de eventos cósmico (~${h}). Cerca del 95 % de las galaxias que vemos ya están así de fuera de alcance.`,
     kDistTierra: 'Distancia a la Tierra', kDistHoy: 'Distancia hoy (el espacio se expandió)', kTiempoLuz: 'Tiempo-luz desde la Tierra', kLuzViaje: 'Su luz viajó',
     kDiam: 'Diámetro', kRadio: 'Radio', kVoyager: 'A la velocidad del Voyager 1', kTamSol: 'Tamaño vs. el Sol', kTamTierra: 'Tamaño vs. la Tierra',
     xSol: (n) => `${n}× el Sol`, xTierra: (n) => `${n}× la Tierra`,
@@ -1053,7 +1171,7 @@ const ESTRUCTURAS = [
 for (const [id, nombre, ra, dec, dist, radioLy, cuerpo, pri, tipo, color, dato] of ESTRUCTURAS) {
   crearObjeto({ id, capa: 'web', nombre, tipo, cuerpo: cuerpo === 'vacio' ? 'cascaron' : cuerpo, alambre: cuerpo === 'vacio', opacidad: cuerpo === 'vacio' ? 0.35 : 0.05, miembros: 700,
     color, pos: posRaDec(ra, dec, dist * LY), radio: radioLy * LY, diam: radioLy ? 2 * radioLy * LY : (id === 'sloan' ? 1.37e9 * LY : 0), prioridad: pri, grupo: 'laniakea', dato,
-    marcador: cuerpo !== 'cascaron' && cuerpo !== 'vacio', css: 'gal', zVuelo: 25.0 });
+    marcador: cuerpo !== 'cascaron' && cuerpo !== 'vacio', css: 'gal', zVuelo: 25.0, luzEsc: id === 'coma' ? 'coma' : null });
 }
 
 // --- Lo más lejano: cuásares, la estrella y las galaxias más distantes ---
@@ -1071,7 +1189,7 @@ const LEJANOS = [
 ];
 for (const [id, nombre, ra, dec, dist, ltt, tipo, radio, dato] of LEJANOS) {
   crearObjeto({ id, capa: 'universo', nombre, tipo, color: 0xffb38a, css: 'lejos', pos: posRaDec(ra, dec, dist * LY), ltt, radio, prioridad: id === 'momz14' ? 1 : 3,
-    grupo: 'observable', dato, zVuelo: 26.4, cosmologico: true });
+    grupo: 'observable', dato, zVuelo: 26.4, cosmologico: true, luzEsc: { ton618: 'ton618', earendel: 'earendel', gnz11: 'gnz11', momz14: 'momz14', jades14: 'momz14' }[id] });
 }
 
 /* ---- Anillos y horizontes (etiquetas con información) ---- */
@@ -1100,11 +1218,11 @@ anillo(28.5e9 * LY, { en: 'Light that left 13 billion years ago', es: 'Luz que s
 
 // Fronteras del universo observable
 crearObjeto({ id: 'cmb', capa: 'universo', nombre: { en: 'Cosmic Microwave Background', es: 'Fondo cósmico de microondas' }, tipo: { en: 'The oldest light', es: 'La luz más antigua' },
-  marcador: false, css: 'lejos', pos: V3(0, 45.3e9 * LY * 0.6, 45.3e9 * LY * 0.8), prioridad: 1, grupo: 'observable', sinDistancia: true, comparable: false,
+  marcador: false, css: 'lejos', pos: V3(0, 45.3e9 * LY * 0.6, 45.3e9 * LY * 0.8), prioridad: 1, grupo: 'observable', sinDistancia: true, comparable: false, luzEsc: 'cmb',
   stats: { en: [['Emitted', '380,000 years after the Big Bang'], ['Temperature today', '2.725 K (−270.4 °C)'], ['Its source is now', '~45.3 billion light-years away']], es: [['Emitida', '380,000 años después del Big Bang'], ['Temperatura hoy', '2.725 K (−270.4 °C)'], ['Su origen está hoy a', '~45,300 millones de años-luz']] },
   dato: { en: 'The afterglow of the Big Bang, released when the universe cooled enough to become transparent. It fills the whole sky; about 1% of the "snow" on an old analog TV was this ancient light.', es: 'El resplandor del Big Bang, liberado cuando el universo se enfrió lo suficiente para volverse transparente. Llena todo el cielo; cerca del 1 % de la "nieve" de una TV analógica antigua era esta luz ancestral.' } });
 crearObjeto({ id: 'borde', capa: 'universo', nombre: { en: 'Edge of the observable universe', es: 'Borde del universo observable' }, tipo: { en: 'Particle horizon', es: 'Horizonte de partículas' },
-  marcador: false, css: 'lejos', pos: V3(46.5e9 * LY * 0.707, 0, -46.5e9 * LY * 0.707), prioridad: 0, grupo: 'observable', sinDistancia: true, comparable: false,
+  marcador: false, css: 'lejos', pos: V3(46.5e9 * LY * 0.707, 0, -46.5e9 * LY * 0.707), prioridad: 0, grupo: 'observable', sinDistancia: true, comparable: false, luzEsc: 'cmb',
   stats: { en: [['Radius', '~46.5 billion light-years'], ['Diameter', '~93 billion light-years'], ['Age of the universe', '13.8 billion years'], ['Galaxies inside', 'hundreds of billions to ~2 trillion']], es: [['Radio', '~46,500 millones de años-luz'], ['Diámetro', '~93,000 millones de años-luz'], ['Edad del universo', '13,800 millones de años'], ['Galaxias dentro', 'de cientos de miles de millones a ~2 billones']] },
   dato: { en: 'How can it be 93 billion light-years across if it is only 13.8 billion years old? Because space kept expanding while the light was traveling: the places that emitted the oldest light we see are now much farther away.', es: '¿Cómo mide 93 mil millones de años-luz si solo tiene 13,800 millones de años? Porque el espacio siguió expandiéndose mientras la luz viajaba: los lugares que emitieron la luz más vieja que vemos hoy están mucho más lejos.' } });
 // Más allá: otros observadores y el universo no observable
@@ -1359,6 +1477,7 @@ const PARADAS = [
     { en: 'The observable universe is ~93 billion light-years across, even though it is only 13.8 billion years old: space kept stretching while the light traveled.', es: 'El universo observable mide ~93 mil millones de años-luz, aunque solo tiene 13,800 millones de años: el espacio siguió estirándose mientras la luz viajaba.' },
     { en: 'If the observable universe were the size of Earth, the Milky Way would be about 14 m wide… and our planet about 1/500th the width of an atom.', es: 'Si el universo observable fuera del tamaño de la Tierra, la Vía Láctea mediría unos 14 m… y nuestro planeta, una quinientosava parte del ancho de un átomo.' },
     { en: 'The farthest galaxy ever confirmed is MoM-z14 (JWST, 2025): we see it just 280 million years after the Big Bang.', es: 'La galaxia más lejana confirmada es MoM-z14 (JWST, 2025): la vemos apenas 280 millones de años después del Big Bang.' },
+    { en: 'Light from the farthest galaxies plays tricks: when MoM-z14’s light set off, the galaxy was only ~2.2 billion ly away, and for billions of years expanding space carried that light AWAY from us. Open <b>💡 Light</b> (bottom bar) to watch it happen.', es: 'La luz de las galaxias más lejanas hace trucos: cuando salió la luz de MoM-z14, la galaxia estaba a solo ~2,200 millones de años-luz, y durante miles de millones de años el espacio en expansión ALEJÓ esa luz de nosotros. Abre <b>💡 La luz</b> (barra inferior) para verlo.' },
     { en: 'You are at the center of your observable universe — and so is every observer, everywhere. It is a horizon, not an edge.', es: 'Estás en el centro de tu universo observable — igual que cualquier observador en cualquier lugar. Es un horizonte, no un borde.' },
     { en: 'Open questions in 2026: DESI’s maps (2024–2025) hint that dark energy may be weakening over time, and the universe’s expansion rate still comes out different depending on how we measure it (the "Hubble tension").', es: 'Preguntas abiertas en 2026: los mapas de DESI (2024–2025) sugieren que la energía oscura podría estar debilitándose, y la tasa de expansión del universo sigue dando valores distintos según cómo se mida (la "tensión de Hubble").' },
   ] },
@@ -1672,10 +1791,12 @@ function renderizarPanel() {
   if (!o.sinDistancia || o.cuerpo === 'cascaron') btns.push(`<button class="btn-grande" id="btn-volar">${t('btnVolar')}</button>`);
   if (o.comparable !== false && !o.sinDistancia) btns.push(`<button id="btn-dist-aqui">${t('btnDist')}</button>`);
   if (tamDeObjeto(o)) btns.push(`<button id="btn-cmp-aqui">${t('btnComparar')}</button>`);
+  if (o.luzEsc) btns.push(`<button id="btn-luz-aqui">${t('btnLuz')}</button>`);
   $('info-extra').innerHTML = btns.join('');
   $('btn-volar')?.addEventListener('click', () => { detenerTour(); volarAObjeto(o); });
   $('btn-dist-aqui')?.addEventListener('click', () => abrirComparador('dist', o.id));
   $('btn-cmp-aqui')?.addEventListener('click', () => abrirComparador('tam', tamDeObjeto(o).id));
+  $('btn-luz-aqui')?.addEventListener('click', () => abrirLuz(o.luzEsc));
 }
 function volarAObjeto(o) {
   if (o.cuerpo === 'cascaron' && o.sinDistancia) { volarA({ z: Math.log10(o.radio * 3), destino: o.pos.clone() }); return; }
@@ -1778,6 +1899,263 @@ $('cmp-a').addEventListener('change', pintarComparacion);
 $('cmp-b').addEventListener('change', pintarComparacion);
 
 /* ============================================================
+   14b. SIMULACIÓN: EL VIAJE DE LA LUZ EN UN UNIVERSO EN EXPANSIÓN
+   Modelo ΛCDM plano (Planck 2018). Se integra una sola vez el factor
+   de escala a(t) y el tiempo conforme η(a) = ∫dt/a. Con eso:
+     · luz que nos llega:   D_luz(t) = a(t)·(η0 − η(t))
+     · mensaje enviado hoy: D_luz(t) = a(t)·(η(t) − η0)
+     · objeto (comóvil χ):  D_obj(t) = a(t)·χ
+     · esfera de Hubble:    R_H(t)   = c / H(t)
+   Unidades: miles de millones de años (Ga) y de años-luz (Gal), c = 1.
+   ============================================================ */
+const COSMO = (() => {
+  const H0 = 67.66 / 977.792, Om = 0.3111, Or = 9.1e-5, OL = 1 - Om - Or;
+  const H = (a) => H0 * Math.sqrt(Om / (a * a * a) + Or / (a * a * a * a) + OL);
+  const N = 8000, l0 = Math.log(1e-8), l1 = Math.log(400), dl = (l1 - l0) / (N - 1);
+  const LN = new Float64Array(N), T = new Float64Array(N), E = new Float64Array(N);
+  const a0 = Math.exp(l0);
+  // Era de radiación (analítica) como condición inicial; luego trapecios en ln a
+  T[0] = a0 * a0 / (2 * H0 * Math.sqrt(Or)); E[0] = a0 / (H0 * Math.sqrt(Or)); LN[0] = l0;
+  let pT = 1 / H(a0), pE = 1 / (a0 * H(a0));
+  for (let i = 1; i < N; i++) {
+    const l = l0 + i * dl, a = Math.exp(l), fT = 1 / H(a), fE = 1 / (a * H(a));
+    LN[i] = l; T[i] = T[i - 1] + 0.5 * (pT + fT) * dl; E[i] = E[i - 1] + 0.5 * (pE + fE) * dl; pT = fT; pE = fE;
+  }
+  const interp = (X, Y, x) => {
+    let lo = 0, hi = N - 1;
+    if (x <= X[0]) return Y[0]; if (x >= X[hi]) return Y[hi];
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (X[m] <= x) lo = m; else hi = m; }
+    return Y[lo] + (x - X[lo]) / (X[hi] - X[lo]) * (Y[hi] - Y[lo]);
+  };
+  const etaInf = E[N - 1] + 1 / (Math.exp(l1) * H0 * Math.sqrt(OL));
+  const aDeT = (t) => Math.exp(interp(T, LN, t)), tDeA = (a) => interp(LN, T, Math.log(a));
+  const etaDeA = (a) => interp(LN, E, Math.log(a)), aDeEta = (e) => Math.exp(interp(E, LN, e));
+  const t0 = tDeA(1), eta0 = etaDeA(1);
+  return { H, aDeT, tDeA, etaDeA, aDeEta, t0, eta0, etaInf, horizonte: etaInf - eta0 };
+})();
+
+const ESCENARIOS = [
+  { id: 'coma', tipo: 'llega', z: 0.0231, nombre: { en: 'Coma Cluster', es: 'Cúmulo de Coma' }, lam: 500 },
+  { id: '3c273', tipo: 'llega', z: 0.158, nombre: { en: 'Quasar 3C 273', es: 'Cuásar 3C 273' }, lam: 500 },
+  { id: 'ton618', tipo: 'llega', z: 2.219, nombre: 'TON 618', lam: 121.6 },
+  { id: 'earendel', tipo: 'llega', z: 6.2, nombre: 'Earendel', lam: 450 },
+  { id: 'gnz11', tipo: 'llega', z: 10.6, nombre: 'GN-z11', lam: 121.6 },
+  { id: 'momz14', tipo: 'llega', z: 14.44, nombre: 'MoM-z14', lam: 121.6 },
+  { id: 'cmb', tipo: 'llega', z: 1089.9, nombre: { en: 'Cosmic background (CMB)', es: 'Fondo cósmico (CMB)' }, lam: 966 },
+  { id: 'env3c', tipo: 'envio', z: 0.158, nombre: '3C 273', lam: 2.1e8 },
+  { id: 'env10', tipo: 'envio', chi: 10, nombre: { en: 'Galaxy 10 billion ly away', es: 'Galaxia a 10 mil millones de al' }, lam: 2.1e8 },
+  { id: 'env15', tipo: 'envio', chi: 15, nombre: { en: 'Galaxy 15 billion ly away', es: 'Galaxia a 15 mil millones de al' }, lam: 2.1e8 },
+  { id: 'envTon', tipo: 'envio', z: 2.219, nombre: 'TON 618', lam: 2.1e8 },
+];
+
+let luzAbierta = false, LS = null, luzS = 0, luzPlay = true, luzFase = '';
+
+function prepararEscenario(e) {
+  const S = { e, m: [] };
+  if (e.tipo === 'llega') {
+    S.ae = 1 / (1 + e.z); S.te = COSMO.tDeA(S.ae); S.chi = COSMO.eta0 - COSMO.etaDeA(S.ae); S.tFin = COSMO.t0;
+  } else {
+    S.ae = 1; S.te = COSMO.t0;
+    S.chi = e.chi ?? (COSMO.eta0 - COSMO.etaDeA(1 / (1 + e.z)));
+    const eLl = COSMO.eta0 + S.chi;
+    S.llega = eLl < COSMO.etaInf - 0.02;
+    S.tLlegada = S.llega ? COSMO.tDeA(COSMO.aDeEta(eLl)) : Infinity;
+    S.tFin = S.llega ? S.tLlegada : COSMO.t0 + 50;
+  }
+  for (let i = 0; i <= 600; i++) S.m.push(estadoLuz(S, i / 600));
+  S.dMax = Math.max(...S.m.map(p => Math.max(p.dGal, p.dLuz))) * 1.06;
+  S.dMaxDiag = Math.max(S.dMax, Math.min(Math.max(...S.m.map(p => p.rH)), S.dMax * 1.6));
+  const paso = numeroRedondo(S.chi / 6);
+  S.pasoRegla = paso;
+  return S;
+}
+function estadoLuz(S, s) {
+  const t = S.te + (S.tFin - S.te) * s, a = COSMO.aDeT(t), eta = COSMO.etaDeA(a);
+  const dLuz = Math.max(0, S.e.tipo === 'llega' ? a * (COSMO.eta0 - eta) : a * (eta - COSMO.eta0));
+  return { s, t, a, dLuz: S.e.tipo === 'envio' ? Math.min(dLuz, a * S.chi) : dLuz, dGal: a * S.chi, rH: 1 / COSMO.H(a) };
+}
+function numeroRedondo(x) { const e = Math.pow(10, Math.floor(Math.log10(x))), f = x / e; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * e; }
+
+// Longitud de onda → nombre de banda y color aproximado
+function bandaLuz(nm) {
+  const B = t('lzBandas');
+  if (nm < 380) return [B.uv, '#9a6bff'];
+  if (nm < 750) return [B.vis, colorVisible(nm)];
+  if (nm < 1e6) return [B.ir, '#9c2b2b'];
+  if (nm < 1e8) return [B.micro, '#8090b8'];
+  return [B.radio, '#6f7a99'];
+}
+function colorVisible(nm) {
+  let r = 0, g = 0, b = 0;
+  if (nm < 440) { r = (440 - nm) / 60; b = 1; } else if (nm < 490) { g = (nm - 440) / 50; b = 1; } else if (nm < 510) { g = 1; b = (510 - nm) / 20; }
+  else if (nm < 580) { r = (nm - 510) / 70; g = 1; } else if (nm < 645) { r = 1; g = (645 - nm) / 65; } else r = 1;
+  return `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)})`;
+}
+function fmtLambda(nm) {
+  if (nm < 1000) return `${fmtMax(nm, 0)} nm`;
+  if (nm < 1e6) return `${fmtMax(nm / 1000, 2)} µm`;
+  if (nm < 1e7) return `${fmtMax(nm / 1e6, 2)} mm`;
+  if (nm < 1e9) return `${fmtMax(nm / 1e7, 1)} cm`;
+  return `${fmtMax(nm / 1e9, 2)} m`;
+}
+const fmtGal = (g) => fmtDist(g * 1e9 * LY);
+const fmtGa = (g) => fmtAnios(g * 1e9);
+
+function abrirLuz(id) {
+  luzAbierta = true; $('luz').classList.add('visible');
+  detenerTour(); tooltip.style.display = 'none';
+  elegirEscenario(id || LS?.e.id || 'momz14');
+}
+function cerrarLuz() { luzAbierta = false; $('luz').classList.remove('visible'); tPrev = performance.now() / 1000; }
+function elegirEscenario(id) {
+  LS = prepararEscenario(ESCENARIOS.find(e => e.id === id) || ESCENARIOS[5]);
+  luzS = 0; luzPlay = true; luzFase = ''; $('luz-play').textContent = '⏸';
+  document.querySelectorAll('#luz [data-esc]').forEach(b => b.classList.toggle('activo', b.dataset.esc === id));
+  pintarLuz();
+}
+function construirBotonesLuz() {
+  for (const tipo of ['llega', 'envio']) {
+    const fila = $(tipo === 'llega' ? 'luz-fila-llega' : 'luz-fila-envio');
+    fila.querySelectorAll('button').forEach(b => b.remove());
+    for (const e of ESCENARIOS.filter(x => x.tipo === tipo)) {
+      const b = document.createElement('button'); b.dataset.esc = e.id; b.textContent = (tipo === 'envio' ? '📡 ' : '') + tx(e.nombre);
+      b.classList.toggle('activo', LS?.e.id === e.id);
+      b.addEventListener('click', () => elegirEscenario(e.id)); fila.appendChild(b);
+    }
+  }
+}
+function pasoLuz(dt) {
+  if (!LS) return;
+  if (luzPlay && luzS < 1) {
+    luzS = Math.min(1, luzS + dt / 22 * +$('luz-vel').value);
+    if (luzS >= 1) { luzPlay = false; $('luz-play').textContent = '▶'; }
+  }
+  pintarLuz();
+}
+
+function lienzoLuz(id) {
+  const cv = $(id), W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== Math.round(W * DPR) || cv.height !== Math.round(H * DPR)) { cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); }
+  const g = cv.getContext('2d'); g.setTransform(DPR, 0, 0, DPR, 0, 0); g.clearRect(0, 0, W, H);
+  g.font = '11px "Segoe UI", system-ui, sans-serif'; return [g, W, H];
+}
+function pintarLuz() {
+  const S = LS, st = estadoLuz(S, luzS), e = S.e, llega = e.tipo === 'llega';
+  if (!$('luz-slider').matches(':active')) $('luz-slider').value = Math.round(luzS * 1000);
+  const lam = e.lam * st.a / S.ae, [banda, colLam] = bandaLuz(lam);
+
+  // --- Vista del espacio: una "regla elástica" pegada al espacio ---
+  {
+    const [g, W, H] = lienzoLuz('luz-espacio'), x0 = 46, x1 = W - 24, y = H * 0.58, k = (x1 - x0) / S.dMax;
+    const X = (d) => x0 + d * k;
+    g.strokeStyle = 'rgba(130,160,255,0.28)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke();
+    g.fillStyle = 'rgba(130,160,255,0.55)';
+    for (let i = 1; i < 400; i++) { const d = st.a * i * S.pasoRegla; if (d > S.dMax) break; g.fillRect(X(d) - 0.5, y - 5, 1, 10); }
+    if (st.rH < S.dMax) {
+      g.strokeStyle = 'rgba(157,123,255,0.8)'; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(X(st.rH), 14); g.lineTo(X(st.rH), H - 14); g.stroke(); g.setLineDash([]);
+      g.fillStyle = '#9d7bff'; g.textAlign = 'center'; g.fillText(t('lzLegHub'), X(st.rH), 11);
+    }
+    // Onda: su longitud se estira con el universo
+    const xl = X(st.dLuz), dir = llega ? 1 : -1, largo = 120, lamPx = clamp(5 * st.a / S.ae, 5, 70);
+    g.strokeStyle = colLam; g.lineWidth = 2; g.beginPath();
+    for (let p = 0; p <= largo; p += 1) { const xx = xl + dir * p; if (xx < x0 || xx > x1) break; const yy = y - 22 + Math.sin(p / lamPx * Math.PI * 2) * 8 * (1 - p / largo); if (p === 0) g.moveTo(xx, yy); else g.lineTo(xx, yy); }
+    g.stroke(); g.lineWidth = 1;
+    g.fillStyle = '#ffe9a8'; g.shadowColor = '#ffc864'; g.shadowBlur = 12; g.beginPath(); g.arc(xl, y - 22, 4.5, 0, Math.PI * 2); g.fill(); g.shadowBlur = 0;
+    // Nosotros y el objeto
+    g.fillStyle = '#ff9ad5'; g.beginPath(); g.arc(x0, y, 5, 0, Math.PI * 2); g.fill();
+    g.textAlign = 'center'; g.fillText(t('lzAqui'), x0 + 4, y + 24);
+    g.fillStyle = '#64d2ff'; g.beginPath(); g.arc(X(st.dGal), y, 5, 0, Math.PI * 2); g.fill();
+    const yEtq = X(st.dGal) - x0 < 70 ? y + 40 : y + 24;   // si están muy juntos, bajar la etiqueta
+    g.textAlign = X(st.dGal) > W - 90 ? 'right' : X(st.dGal) - x0 < 70 ? 'left' : 'center'; g.fillText(tx(e.nombre), Math.min(X(st.dGal), W - 6), yEtq);
+    g.textAlign = 'left'; g.fillStyle = '#56618a'; if (W > 560) g.fillText(`0 — ${fmtGal(S.dMax)}`, x0, H - 6);
+    g.textAlign = 'right'; g.fillText(t('lzRegla')(fmtGal(S.pasoRegla)), W - 8, H - 6);
+  }
+
+  // --- Diagrama espacio-tiempo ---
+  {
+    const [g, W, H] = lienzoLuz('luz-diagrama'), L = 54, R = 14, T = 16, B = 34;
+    const X = (d) => L + clamp(d / S.dMaxDiag, 0, 1.02) * (W - L - R);
+    const Y = (t) => H - B - (t - S.te) / (S.tFin - S.te) * (H - T - B);
+    g.strokeStyle = 'rgba(130,160,255,0.12)'; g.fillStyle = '#56618a';
+    const px = numeroRedondo(S.dMaxDiag / 5);
+    g.textAlign = 'center';
+    for (let d = 0; d <= S.dMaxDiag * 1.0001; d += px) { g.beginPath(); g.moveTo(X(d), T); g.lineTo(X(d), H - B); g.stroke(); g.fillText(fmtMax(d, d < 1 ? 2 : 1), X(d), H - B + 14); }
+    const pt = numeroRedondo((S.tFin - S.te) / 5);
+    g.textAlign = 'right';
+    for (let tt = Math.ceil(S.te / pt) * pt; tt <= S.tFin + 1e-9; tt += pt) { g.beginPath(); g.moveTo(L, Y(tt)); g.lineTo(W - R, Y(tt)); g.stroke(); g.fillText(fmtMax(tt, pt < 0.1 ? 2 : 1), L - 6, Y(tt) + 4); }
+    g.textAlign = 'center'; g.fillText(t('lzEjeX'), (L + W - R) / 2, H - 4);
+    g.save(); g.translate(12, (T + H - B) / 2); g.rotate(-Math.PI / 2); g.fillText(t('lzEjeY'), 0, 0); g.restore();
+    const curva = (campo, color, hasta = 1, guion = null, ancho = 1.6) => {
+      g.strokeStyle = color; g.lineWidth = ancho; g.setLineDash(guion || []); g.beginPath();
+      S.m.forEach((p, i) => { if (p.s > hasta + 1e-9) return; const xx = X(p[campo]), yy = Y(p.t); if (i === 0) g.moveTo(xx, yy); else g.lineTo(xx, yy); });
+      g.stroke(); g.setLineDash([]); g.lineWidth = 1;
+    };
+    curva('rH', 'rgba(157,123,255,0.85)', 1, [5, 4]);
+    curva('dGal', 'rgba(100,210,255,0.35)'); curva('dGal', '#64d2ff', luzS);
+    curva('dLuz', 'rgba(255,200,100,0.28)'); curva('dLuz', '#ffc864', luzS, null, 2.4);
+    g.strokeStyle = '#ff9ad5'; g.lineWidth = 2; g.beginPath(); g.moveTo(X(0), Y(S.te)); g.lineTo(X(0), Y(S.tFin)); g.stroke(); g.lineWidth = 1;
+    g.strokeStyle = 'rgba(110,168,255,0.45)'; g.beginPath(); g.moveTo(L, Y(st.t)); g.lineTo(W - R, Y(st.t)); g.stroke();
+    g.fillStyle = '#ffe9a8'; g.beginPath(); g.arc(X(st.dLuz), Y(st.t), 4.5, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#64d2ff'; g.beginPath(); g.arc(X(st.dGal), Y(st.t), 4, 0, Math.PI * 2); g.fill();
+    // Leyenda
+    const ley = [[t('lzLegLuz'), '#ffc864'], [tx(e.nombre), '#64d2ff'], [t('lzLegHub'), '#9d7bff'], [t('lzLegNos'), '#ff9ad5']];
+    g.textAlign = 'left'; let lx = W - R - 8 - ley.reduce((s, [n]) => s + g.measureText(n).width + 26, 0);
+    for (const [n, c] of ley) { g.fillStyle = c; g.fillRect(lx, T + 4, 14, 3); g.fillStyle = '#c3cce4'; g.fillText(n, lx + 18, T + 9); lx += g.measureText(n).width + 26; }
+  }
+
+  // --- Lecturas ---
+  const tam = st.a < 0.985 ? t('lzMenor')(fmtMax(1 / st.a, 1 / st.a < 10 ? 2 : 0)) : st.a > 1.015 ? t('lzMayor')(fmtMax(st.a, 1)) : t('lzHoy');
+  const tiles = [
+    [t('lzEdad'), fmtGa(st.t), st.t > COSMO.t0 + 0.01 ? t('lzFuturo')(fmtGa(st.t - COSMO.t0)) : ''],
+    [t('lzViaje'), fmtGa(st.t - S.te), ''],
+    [t('lzDLuz'), llega && luzS >= 1 ? t('lzLlego') : fmtGal(st.dLuz), ''],
+    [t('lzDGal')(tx(e.nombre)), fmtGal(st.dGal), ''],
+    [t('lzTam'), tam, ''],
+    [t('lzOnda'), `<span class="muestra-color" style="background:${colLam}"></span>${fmtLambda(lam)}`, banda],
+  ];
+  $('luz-stats').innerHTML = tiles.map(([k, v, s]) => `<div class="luz-tile"><div class="k">${k}</div><div class="v">${v}${s ? `<small>${s}</small>` : ''}</div></div>`).join('');
+
+  // --- Narración según la fase ---
+  let fase, html, clase = '';
+  const nombre = tx(e.nombre);
+  if (luzS >= 1) {
+    fase = 'fin'; clase = 'fin';
+    if (llega) {
+      const De = S.ae * S.chi, recorrido = S.tFin - S.te, max = Math.max(De, recorrido, S.chi);
+      const barra = (txt, val, color) => `<div class="barra-luz">${txt}: <b>${fmtGal(val)}</b><div class="b" style="width:${Math.max(2, val / max * 100)}%;background:${color}"></div></div>`;
+      html = t('lzFinLlega')(nombre, fmtGa(recorrido), fmtGal(De), fmtGal(S.chi), S.chi > COSMO.horizonte, fmtLambda(e.lam), fmtLambda(e.lam / S.ae), e.id === 'cmb' ? t('lzExtraCMB') : e.z > 1 ? t('lzExtraJWST') : '')
+        + barra(t('lzBarraSalio'), De, '#64d2ff') + barra(t('lzBarraCamino'), recorrido, '#ffc864') + barra(t('lzBarraHoy'), S.chi, '#9d7bff');
+    } else html = S.llega ? t('lzFinEnvio')(nombre, fmtGa(S.tFin - COSMO.t0), fmtGal(S.chi), fmtGal(S.m[600].dGal)) : t('lzFinNunca')(nombre, fmtGal(S.chi), fmtGal(COSMO.horizonte));
+  } else if (llega) {
+    if (e.z < 0.2) { fase = 'cerca'; html = t('lzCerca')(nombre, fmtGal(S.ae * S.chi), fmtGal(S.chi)); }
+    else if (luzS < 0.02) { fase = 'sale'; html = e.id === 'cmb' ? t('lzCMB')(fmtGal(S.ae * S.chi)) : t('lzSale')(nombre, fmtGa(st.t), fmtGal(st.dGal), fmt(1 / S.ae, 1)); }
+    else if (st.dLuz > st.rH) { fase = 'aleja'; clase = 'alerta'; html = t('lzAleja'); }
+    else { fase = 'acerca'; html = t('lzAcerca')(fmtGal(5.8)); }
+  } else {
+    const hueco = st.dGal - st.dLuz;
+    if (luzS < 0.02) { fase = 'envia'; html = t('lzEnvia')(nombre, fmtGal(S.chi)); }
+    else if (hueco > st.rH) { fase = 'crece'; clase = 'alerta'; html = S.llega ? t('lzCreceLlega') : t('lzCreceNunca')(nombre, fmtGal(COSMO.horizonte)); }
+    else { fase = 'cierra'; html = t('lzCierra'); }
+  }
+  if (fase !== luzFase || fase === 'fin') {
+    if (fase !== luzFase || $('luz-narra').dataset.idioma !== idioma) { $('luz-narra').innerHTML = html; $('luz-narra').className = clase; $('luz-narra').dataset.idioma = idioma; }
+    luzFase = fase;
+  }
+}
+function textosLuz() {
+  $('luz-chip').textContent = t('lzChip'); $('luz-titulo').textContent = t('lzTitulo'); $('luz-intro').textContent = t('lzIntro');
+  $('luz-etq-llega').textContent = t('lzEtqLlega'); $('luz-etq-envio').textContent = t('lzEtqEnvio');
+  $('luz-sub-esp').textContent = t('lzSubEsp'); $('luz-sub-diag').textContent = t('lzSubDiag'); $('luz-modelo').textContent = t('lzModelo');
+  $('btn-luz').textContent = t('lzBtn'); $('luz-reinicio').title = t('lzReinicio');
+  construirBotonesLuz(); luzFase = '';
+}
+$('btn-luz').addEventListener('click', () => abrirLuz());
+$('luz-cerrar').addEventListener('click', cerrarLuz);
+$('luz-play').addEventListener('click', () => { if (luzS >= 1) luzS = 0; luzPlay = !luzPlay; $('luz-play').textContent = luzPlay ? '⏸' : '▶'; });
+$('luz-reinicio').addEventListener('click', () => { luzS = 0; luzPlay = true; luzFase = ''; $('luz-play').textContent = '⏸'; });
+$('luz-slider').addEventListener('input', (ev) => { luzS = +ev.target.value / 1000; });
+
+/* ============================================================
    15. RECORRIDO GUIADO
    ============================================================ */
 let tour = null;
@@ -1853,6 +2231,7 @@ lienzoGL.addEventListener('pointerup', (ev) => {
 });
 window.addEventListener('keydown', (ev) => {
   if (ev.target.tagName === 'SELECT') return;
+  if (luzAbierta) { if (ev.key === 'Escape') cerrarLuz(); if (ev.key === ' ') { ev.preventDefault(); $('luz-play').click(); } return; }
   if (ev.key === 'Escape') { if ($('comparador').classList.contains('visible')) $('comparador').classList.remove('visible'); else cerrarPanel(); }
   if (ev.key === '+' || ev.key === '=') { detenerTour(); vuelo = null; zoomObj = clamp(zoomObj - 0.25, zMinActual(), Z_MAX); }
   if (ev.key === '-' || ev.key === '_') { detenerTour(); vuelo = null; zoomObj = clamp(zoomObj + 0.25, zMinActual(), Z_MAX); }
@@ -1870,6 +2249,7 @@ function aplicarIdioma(nuevo) {
   $('vista-etq').textContent = t('vistaDe');
   $('titulo').innerHTML = `${t('titulo')}<span class="sub">${t('sub')}</span>`;
   $('btn-tour').textContent = tour ? t('tourStop') : t('tour'); $('btn-comparar').textContent = t('comparar');
+  textosLuz(); if (luzAbierta) pintarLuz();
   $('cmp-titulo').textContent = t('cmpTitulo'); $('tab-tam').textContent = t('tabTam'); $('tab-dist').textContent = t('tabDist'); $('cmp-vs').textContent = t('vs');
   const pista = $('pista'); if (pista) pista.textContent = t('pista');
   $('err-titulo').textContent = t('errTitulo'); $('err-texto').innerHTML = t('errTexto');
@@ -1898,6 +2278,7 @@ let tPrev = performance.now() / 1000, cuadro = 0;
 function animar() {
   requestAnimationFrame(animar);
   const ahora = performance.now() / 1000, dt = Math.min(ahora - tPrev, 0.1); tPrev = ahora;
+  if (luzAbierta) { pasoLuz(dt); return; }   // con la simulación abierta, la escena 3D descansa
   if (!pasoVuelo()) {
     zoomObj = clamp(zoomObj, zMinActual(), Z_MAX);
     zoom += (zoomObj - zoom) * Math.min(1, dt * 7);
@@ -1928,7 +2309,7 @@ const paradaInicial = PARADAS.find(p => p.id === parametroZ) || PARADAS[0];
 setTimeout(() => irAParada(paradaInicial), 300);
 animar();
 // Depuración / pruebas automatizadas
-window.__uni = { PARADAS, POR_ID, irAParada, seleccionar, abrirComparador, estado: () => ({ zoom, foco: foco.toArray(), manual: focoManual?.id || null }), fijarZoom: (z) => { vuelo = null; zoom = zoomObj = z; } };
+window.__uni = { abrirLuz, fijarLuz: (s) => { luzS = s; luzPlay = false; }, COSMO, PARADAS, POR_ID, irAParada, seleccionar, abrirComparador, estado: () => ({ zoom, foco: foco.toArray(), manual: focoManual?.id || null }), fijarZoom: (z) => { vuelo = null; zoom = zoomObj = z; } };
 </script>
 </body>
 </html>

@@ -133,3 +133,16 @@ Planetary motion is *derived* from these elements through Kepler's equation at r
 - **[Three.js](https://threejs.org/)** contributors, for making WebGL feel like creative writing.
 
 > *"The spacecraft will be encountered and the record played only if there are advanced spacefaring civilizations in interstellar space. But the launching of this bottle into the cosmic ocean says something very hopeful about life on this planet."* — Carl Sagan
+
+
+## Living History (`historia.html`)
+
+Spanish-language educational module with ten regional snapshots from Earth's formation to industrial Britain. Select animated inhabitants to read field notes, explore climate and evolutionary connections, answer learning questions, or start the guided tour. Open `historia.html` through the same static server. No dependencies or API keys; NPCs use local movement rules rather than generative AI. Symbols are illustrative, the timeline uses non-proportional chapters, and cultural periods describe regional histories. Keyboard-accessible inhabitant buttons, pause controls, and initial reduced-motion support are included.
+
+### First-person exploration
+
+Choose **Entrar en primera persona** in any chapter. WASD moves, Shift accelerates, arrow keys or dragging looks around, and E inspects the inhabitant under the crosshair within 16 metres. Includes optional pointer lock, fullscreen, in-game field notes, touch controls, obstacle collisions, and return to the map. Requires WebGL and Three.js from jsDelivr. Procedural geometry represents stylized educational dioramas, not exact reconstructions.
+
+### Expanded environments and quieter interface
+
+The landscape is now the main view. Field notes, climate, quizzes, sources, and controls are disclosed on request. In-game Options also includes epoch selection for fullscreen use. Ten regional environments include geological terrain, underwater scenery, forests, a steppe camp, farming village, medieval market, and industrial railway/workshop. Each has three discoverable landmarks (30 total), with a per-page-session counter. Added atmospheric motion, shadows, collision-aware NPC wandering with pauses, and designated river crossings. Small vegetation uses instancing and materials are reused. All assets remain stylized educational interpretations.

@@ -141,3 +141,26 @@ El movimiento planetario se *deriva* de estos elementos resolviendo la ecuación
 - **Los contribuidores de [Three.js](https://threejs.org/)**, por hacer que WebGL se sienta como escritura creativa.
 
 > *"La nave será encontrada y el disco será escuchado solo si existen civilizaciones avanzadas que viajen por el espacio interestelar. Pero lanzar esta botella al océano cósmico dice algo muy esperanzador sobre la vida en este planeta."* — Carl Sagan
+
+
+## Historia viva (`historia.html`)
+
+Módulo educativo en español con diez capítulos desde la formación de la Tierra hasta la industrialización británica. Incluye escenarios regionales ilustrados, habitantes animados seleccionables, clima y paisaje, conexiones evolutivas, preguntas con explicación y recorrido automático. Accesible desde los módulos Voyager y Universo.
+
+Ejecuta `python -m http.server 8000` y abre `http://localhost:8000/historia.html`. No requiere dependencias ni claves API. Los habitantes usan reglas locales de movimiento; no hay IA generativa. Los símbolos son representaciones estilizadas, no modelos anatómicos. La línea del tiempo avanza por capítulos y no usa una escala temporal proporcional. Incluye selección por botones, pausa y respeto inicial a la preferencia de movimiento reducido.
+
+Las escenas culturales son regionales: no representan una secuencia universal de progreso ni evolución biológica. Las referencias de consulta se encuentran al pie del módulo.
+
+### Recorrido en primera persona
+
+Pulsa **Entrar en primera persona** para recorrer cualquiera de los diez escenarios 3D. Usa WASD para caminar, Mayús para acelerar, flechas o arrastra para mirar, y E para consultar al habitante bajo la mira a menos de 16 metros. Puedes capturar el ratón y liberarlo con Esc, activar pantalla completa o volver al mapa. En móvil, usa los botones para caminar y arrastra el escenario para mirar. Las fichas también se muestran dentro de la vista de juego. Hay colisiones con edificios, árboles y límites del escenario.
+
+Requiere WebGL y conexión a jsDelivr para cargar Three.js, igual que los módulos espaciales. Los modelos geométricos son estilizados y los ambientes son dioramas educativos; no reconstrucciones anatómicas ni lugares históricos exactos.
+
+### Escenarios ampliados e interfaz de exploración
+
+La vista principal da prioridad al paisaje. El cuaderno, el clima, los retos y las fuentes se abren bajo demanda; las ayudas y ajustes de juego están en **Opciones**. También se puede cambiar de época desde allí en pantalla completa.
+
+Los diez ambientes incluyen relieve de fondo, vegetación y objetos regionales: volcanismo, tapetes microbianos, fondo marino con esponjas, bosques y riberas, estepa con campamento, aldea agrícola, mercado medieval y ciudad industrial con ferrocarril y taller. Cada época tiene tres lugares que puedes descubrir con la mira y E (30 en total). El contador se conserva durante la sesión de la página. Se añaden sombras, nubes, partículas, movimiento ambiental y pausas de los habitantes. El agua tiene cruces delimitados en las escenas terrestres. La vegetación pequeña utiliza instancias y los materiales se reutilizan para limitar el coste de renderizado.
+
+Las formas, los edificios y los campamentos son interpretaciones estilizadas. Los marcadores de descubrimiento son ayudas de navegación y no objetos históricos.
